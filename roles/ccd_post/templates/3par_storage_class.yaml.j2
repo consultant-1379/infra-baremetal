@@ -1,0 +1,26 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  name: {{ hpe3par_ip }}
+provisioner: csi.hpe.com
+parameters:
+  accessProtocol: fc
+  cpg: {{ hpe3par_cpg }}
+  provisioningType: tpvv
+  csi.storage.k8s.io/fstype: ext4
+  csi.storage.k8s.io/controller-expand-secret-name: {{ storage_backend }}
+  csi.storage.k8s.io/controller-expand-secret-namespace: {{ storage_namespace }}
+  csi.storage.k8s.io/controller-publish-secret-name: {{ storage_backend }}
+  csi.storage.k8s.io/controller-publish-secret-namespace: {{ storage_namespace }}
+  csi.storage.k8s.io/node-publish-secret-name: {{ storage_backend }}
+  csi.storage.k8s.io/node-publish-secret-namespace: {{ storage_namespace }}
+  csi.storage.k8s.io/node-stage-secret-name: {{ storage_backend }}
+  csi.storage.k8s.io/node-stage-secret-namespace: {{ storage_namespace }}
+  csi.storage.k8s.io/provisioner-secret-name: {{ storage_backend }}
+  csi.storage.k8s.io/provisioner-secret-namespace: {{ storage_namespace }}
+  description: "Volume created by the HPE CSI Driver for Kubernetes"
+reclaimPolicy: Delete
+allowVolumeExpansion: true

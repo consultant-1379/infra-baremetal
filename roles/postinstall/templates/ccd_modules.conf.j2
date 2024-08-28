@@ -1,0 +1,5 @@
+br_netfilter
+{# Ceph module required for bmccd5 #}
+{% if is_ceph is defined and is_ceph %}
+ceph
+{% endif %}

@@ -1,0 +1,33 @@
+---
+- hosts: worker
+  gather_facts: no
+  vars:
+    cfg_file: /etc/emc/scaleio/drv_cfg.txt
+  tasks:
+    - name: "Get {{cfg_file}} content"
+      slurp:
+        src: '{{cfg_file}}'
+      register: config
+      become: yes
+    - set_fact:
+        powerflex_mapping: '{{ powerflex_mapping| default({}) | combine( { node :
+                            ( hostvars[node]["config"]["content"] | b64decode).splitlines() 
+                            | select("match","^ini_guid")| first | regex_replace("ini_guid ","")}) }}'
+      loop: '{{ groups["worker"] }}'
+      loop_control:
+        loop_var: node
+        label: '{{ node }}'
+      delegate_to: localhost
+      run_once: yes
+    - name: Save mappings to file
+      copy:
+        content: '{{ powerflex_mapping | to_nice_yaml(indent=2)}}'
+        dest: powerflex_mapping.yml
+      delegate_to: localhost
+      run_once: yes
+    - set_fact:
+        my_mapping: "{{ lookup('file','powerflex_mapping.yml') |from_yaml  }}"
+      delegate_to: localhost
+      run_once: yes
+    - debug:
+        msg: "{{ inventory_hostname }} has GUID {{ my_mapping[inventory_hostname] }}"

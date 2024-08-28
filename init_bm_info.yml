@@ -1,0 +1,52 @@
+- hosts: localhost
+  connection: local
+  gather_facts: False
+  roles:
+    - init_bm_info
+  vars_prompt:
+    - name: bm_deployment_name
+      prompt: "Enter the BM Deployment Name e.g. bmccd1. It should match the domain name i.e. bmccd1.athtem.eei.ericsson.se.\n"
+      private: no
+    - name: storage_type
+      prompt: "Enter the storage type (Valid choices are: {{ storage_choices| join(', ') }}).\n"
+      private: no
+    - name: storage_protocol_type
+      prompt: "Enter the storage protocol (Valid choices are: {{ storage_protocol_choices| join(', ') }}).\n"
+      private: no
+      default: FC
+    - name: all_racks
+      prompt: "Is this an all rack deployment (yes/no).\n"
+      private: no
+      default: 'no'
+    - name: nas_type
+      prompt: "Enter the NAS type (Valid choices are: {{ nas_choices| join(', ') }}).\n"
+      private: no
+      default: va
+    - name: new_ks_image
+      prompt: "Re-use Existing Kickstart Image (Valid choices are: {{ ks_img_choices| join(', ') }}).\n"
+      private: no
+      default: reuse
+    - name: virsh_storage_pool_image
+      prompt: "Enter virsh storage pool name to deploy monitoring VMs (Eg. faststore, default).\n"
+      private: no
+    - name: num_master_node
+      prompt: "Enter number of master nodes in this deployment.\n"
+      private: no
+
+  pre_tasks:
+      - name: Validate storage type
+        assert:
+          that: storage_type in storage_choices
+          fail_msg: "Storage type '{{ storage_type }}' is invalid. It must be one of {{ storage_choices|join(', ') }}"
+      - name: Validate storage protocol
+        assert:
+          that: storage_protocol_type in storage_protocol_choices
+          fail_msg: "Storage type '{{ storage_protocol_type }}' is invalid. It must be one of {{ storage_protocol_choices|join(', ') }}"
+      - name: Validate nas type
+        assert:
+          that: nas_type in nas_choices
+          fail_msg: "NAS type '{{ nas_type }}' is invalid. It must be one of {{ nas_choices|join(', ') }}"
+      - name: Validate new ks image
+        assert:
+          that: new_ks_image in ks_img_choices
+          fail_msg: "Image choice '{{ new_ks_image }}' is invalid. It must be one of {{ ks_img_choices|join(', ') }}"

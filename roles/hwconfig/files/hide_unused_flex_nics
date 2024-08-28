@@ -1,0 +1,9 @@
+109c109
+<             hide_flex_nic = "false"
+---
+>             hide_flex_nic = "true"
+571c571
+<         return net_fix_actions
+\ No newline at end of file
+---
+>         return net_fix_actions

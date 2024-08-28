@@ -1,0 +1,2396 @@
+tags: &tags_reference
+  value_pack_ebs_ln: false
+  value_pack_ebs_m: false
+global:
+  pullSecret: registry
+  registry:
+    url: registry.bmccd0.athtem.eei.ericsson.se
+    pullSecret: registry
+  timezone: Europe/Dublin
+  persistentVolumeClaim:
+    storageClass: powerflex
+  ingress:
+    enmHost: ieatenmc0.athtem.eei.ericsson.se
+    class: ingress-nginx
+  vips:
+    fm_vip_address: 10.232.239.27
+    cm_vip_address: 10.232.239.28
+    pm_vip_address: 10.232.239.29
+    amos_vip_address: 10.232.239.30
+    general_scripting_vip_address: 10.232.239.31
+    visinamingsb_service: 10.232.239.34
+    itservices_0_vip_address: 10.232.239.35
+    itservices_1_vip_address: 10.232.239.36
+    svc_FM_vip_fwd_ipaddress: 10.232.239.33
+  enmProperties:
+    enm_deployment_type: Small_CloudNative_ENM
+    COM_INF_LDAP_ADMIN_CN: uid=ssouser,ou=people,dc=ieatenmc0,dc=com
+    COM_INF_LDAP_ROOT_SUFFIX: dc=ieatenmc0,dc=com
+    host_system_identifier: ieatenmc0
+    PKI_EntityProfile_DN_COUNTRY_NAME: IE
+    PKI_EntityProfile_DN_ORGANIZATION: Ericsson
+    PKI_EntityProfile_DN_ORGANIZATION_UNIT: DE_OPENSTACK_INFRA
+    certificatesRevListDistributionPointServiceDnsEnable: null
+    certificatesRevListDistributionPointServiceIpv4Enable: null
+    certificatesRevListDistributionPointServiceIpv6Enable: null
+    publicKeyInfraRegAutorithyPublicServerName: null
+    enforcedUserHardening: false
+  nodeSelector: null
+  tolerations: null
+  emailServer: null
+  rwx:
+    storageClass: powerstore-nfs
+    cronSize: 15Gi
+    trutilsSize: 1.5Gi
+    sentinelSize: 1.5Gi
+    sdnSize: 1.5Gi
+  sentinelHostname: sentinel-0
+  tags: *tags_reference
+eric-enm-version-configmap:
+  enabled: true
+  productVersion: 'ENM 22.06 (CSAR Version: 1.21.0-19) AOM 901 151 R1FD'
+  packageVersion: CXP 904 1414 1.21.0-19 R22A
+  productionDate: '2022-03-29T15:41:06+01:00'
+  productSet: 22.06.43
+eric-oss-ingress-controller-nx:
+  enabled: true
+  ingressClass: ingress-nginx
+  ingressClassResource:
+    enabled: true
+  service:
+    enabled: true
+    loadBalancerIP: 10.150.12.7
+    annotations: {}
+  controller:
+    useHostPorts: false
+  nodeSelector: null
+  resources:
+    requests:
+      cpu: 600m
+      memory: 2048Mi
+    limits:
+      cpu: 2000m
+      memory: 2048Mi
+  imageCredentials:
+    repoPath: proj-enm/proj-eric-oss-ingress-ctr-nx-drop
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-enm-monitoring-master:
+  enabled: true
+  monitoring:
+    autoUpload:
+      enabled: false
+      ddpsite: null
+      account: null
+      password: null
+eric-enm-monitoring-remotewriter:
+  enabled: true
+eric-pm-server:
+  enabled: true
+  server:
+    persistentVolume:
+      storageClass: powerflex
+      size: 25Gi
+  config:
+    external_remote_write:
+      enabled: false
+      url: null
+      remote_timeout: null
+      name: null
+      write_relabel_configs: []
+  resources:
+    eric-pm-server:
+      limits:
+        cpu: '3'
+        memory: 10Gi
+      requests:
+        cpu: '1'
+        memory: 5Gi
+  imageCredentials:
+    repoPath: proj-enm/proj-common-assets-cd/monitoring/pm
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-drop
+eric-pm-node-exporter:
+  enabled: true
+  prometheus:
+    nodeExporter:
+      service:
+        hostPort: 9690
+        servicePort: 9690
+  imageCredentials:
+    repoPath: proj-enm/proj_kds/erikube
+eric-pm-alert-manager:
+  enabled: true
+  persistence:
+    persistentVolumeClaim:
+      storageClassName: powerflex
+  imageCredentials:
+    repoPath: proj-enm/proj-adp-pm-alert-manager-drop
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-enm-fm-alert-parser:
+  enabled: true
+  imageCredentials:
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-net-ingress-l4:
+  enabled: true
+  sidecars:
+    eric-enm-snmp-trap-forwarder:
+      enabled: true
+    eric-enm-http-alarms-forwarder:
+      enabled: true
+  vipManagement: true
+  natAllTrafficOriginatingFromPodNet: false
+  fullnameOverride: {}
+  virtualRouterId: 106
+  tolerations:
+  - key: node
+    operator: Equal
+    effect: NoSchedule
+    value: routing
+  nodeSelector: null
+  resources:
+    requests:
+      enabled: true
+      memory: 2048Mi
+      cpu: 300m
+    limits:
+      enabled: true
+      memory: 2048Mi
+      cpu: 1000m
+    logshipper:
+      requests:
+        ephemeral-storage: 150Mi
+      limits:
+        ephemeral-storage: 150Mi
+  interfaces:
+    internal: internal
+    external: traffic
+  cniMode: ipip
+  podNetworkCIDR: 192.168.0.0/16
+  rbac:
+    create: true
+    serviceAccountName: null
+  imageCredentials:
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-net-ingress-l4-crd:
+  enabled: true
+elasticsearch-admin:
+  enabled: true
+eric-data-search-engine:
+  enabled: true
+  jvmHeap:
+    ingest: 1024m
+    master: 512m
+    data: 2048m
+  resources:
+    ingest:
+      limits:
+        cpu: 500m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 2Gi
+    master:
+      limits:
+        cpu: 500m
+        memory: 2Gi
+      requests:
+        cpu: 500m
+        memory: 2Gi
+    data:
+      limits:
+        cpu: 1000m
+        memory: 8Gi
+      requests:
+        cpu: 1000m
+        memory: 8Gi
+    logshipper:
+      requests:
+        ephemeral-storage: 150Mi
+      limits:
+        ephemeral-storage: 150Mi
+  persistence:
+    data:
+      persistentVolumeClaim:
+        storageClassName: powerflex
+    backup:
+      persistentVolumeClaim:
+        storageClassName: powerstore-nfs
+    master:
+      persistentVolumeClaim:
+        storageClassName: powerflex
+  imageCredentials:
+    repoPath: proj-enm/proj-adp-log-released
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-data-eshistory-search-engine:
+  enabled: true
+  persistence:
+    data:
+      persistentVolumeClaim:
+        storageClassName: powerflex
+    backup:
+      persistentVolumeClaim:
+        storageClassName: powerstore-nfs
+    master:
+      persistentVolumeClaim:
+        storageClassName: powerflex
+  imageCredentials:
+    repoPath: proj-enm/proj-adp-log-released
+eric-data-graph-database-nj:
+  enabled: true
+  persistentVolumeClaim:
+    storageClass: powerflex
+    backup:
+      storageClass: powerflex
+    logging:
+      storageClass: powerflex
+  imageCredentials:
+    repoPath: proj-enm/aia_releases
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-cnom-document-database-mg:
+  enabled: true
+  persistence:
+    enabled: true
+    storageClass: powerflex
+    size: 2Gi
+  imageCredentials:
+    repoPath: proj-enm/proj-pc-released
+    registry:
+      url: ''
+eric-cnom-server:
+  enabled: true
+  ingress:
+    enabled: true
+    ingressClass: ingress-nginx
+    hostname: ieatenmc0.athtem.eei.ericsson.se
+  imageCredentials:
+    repoPath: proj-enm/proj-pc-rs-released
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+    registry:
+      url: ''
+eric-enm-troubleshooting-utils:
+  enabled: true
+  clusterRole: true
+eric-enm-globalproperties:
+  enabled: true
+eric-enm-rwxpvc:
+  enabled: true
+  defaultPaths:
+    cron: true
+    home: true
+  imageCredentials:
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-enm-serviceroles:
+  enabled: true
+eric-enmsg-gossiprouter-cache:
+  enabled: true
+  resources:
+    requests:
+      memory: 600Mi
+      cpu: 210m
+    limits:
+      memory: 600Mi
+      cpu: 700m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-gossiprouter-remoting:
+  enabled: true
+  resources:
+    requests:
+      memory: 600Mi
+      cpu: 210m
+    limits:
+      memory: 600Mi
+      cpu: 700m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-gossiprouter-eap7:
+  enabled: true
+  resources:
+    requests:
+      memory: 600Mi
+      cpu: 210m
+    limits:
+      memory: 600Mi
+      cpu: 700m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-jmsserver:
+  enabled: true
+  resources:
+    requests:
+      memory: 22324Mi
+      cpu: 2400m
+      ephemeral-storage: 1Gi
+    limits:
+      memory: 22324Mi
+      cpu: 8000m
+      ephemeral-storage: 2Gi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enm-modeldeployservice:
+  enabled: true
+  resources:
+    modeldeployservice:
+      requests:
+        memory: 7662Mi
+        cpu: 600m
+        ephemeral-storage: 18Gi
+      limits:
+        memory: 7662Mi
+        cpu: 2000m
+        ephemeral-storage: 18Gi
+eric-enmsg-opendj:
+  enabled: true
+  resources:
+    requests:
+      ephemeral-storage: 50Mi
+    limits:
+      ephemeral-storage: 200Mi
+    brAgent:
+      requests:
+        ephemeral-storage: 200Mi
+      limits:
+        ephemeral-storage: 200Mi
+  imageCredentials:
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-data-document-database-pg:
+  enabled: true
+  resources:
+    logshipper:
+      requests:
+        ephemeral-storage: 150Mi
+      limits:
+        ephemeral-storage: 150Mi
+  postgresConfig:
+    max_slot_wal_keep_size: '5000'
+  persistentVolumeClaim:
+    size: 25Gi
+  imageCredentials:
+    repoPath: proj-enm/proj-document-database-pg-release/data
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-enmsg-sentinel:
+  enabled: true
+  resources:
+    requests:
+      memory: 3596Mi
+      cpu: 600m
+    limits:
+      memory: 3596Mi
+      cpu: 2000m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+    brAgent:
+      requests:
+        ephemeral-storage: 200Mi
+      limits:
+        ephemeral-storage: 200Mi
+  persistentVolumeClaim:
+    sentinelPVSize: 1Gi
+eric-enm-kvstore-hc:
+  enabled: true
+  resources:
+    requests:
+      memory: 512Mi
+      cpu: 300m
+    limits:
+      memory: 512Mi
+      cpu: 1000m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+    brAgent:
+      requests:
+        ephemeral-storage: 200Mi
+      limits:
+        ephemeral-storage: 200Mi
+    logshipper:
+      requests:
+        ephemeral-storage: 150Mi
+      limits:
+        ephemeral-storage: 150Mi
+  persistentVolumeClaim:
+    size: 1Gi
+  imageCredentials:
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-enmsg-vault-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 1954Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 1954Mi
+      cpu: 2000m
+      ephemeral-storage: 1200Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 100m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+    vault3pp:
+      enabled: true
+      requests:
+        ephemeral-storage: 100Mi
+      limits:
+        ephemeral-storage: 150Mi
+elasticsearch-bragent:
+  enabled: true
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 512Mi
+      ephemeral-storage: 500Mi
+    requests:
+      cpu: 500m
+      memory: 256Mi
+      ephemeral-storage: 500Mi
+eshistory-bragent:
+  enabled: true
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 512Mi
+      ephemeral-storage: 500Mi
+    requests:
+      cpu: 500m
+      memory: 256Mi
+      ephemeral-storage: 500Mi
+eric-data-search-engine-curator:
+  enabled: true
+  imageCredentials:
+    repoPath: proj-enm/proj-adp-log-released
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-ctrl-bro:
+  enabled: true
+  resources:
+    backupAndRestore:
+      limits:
+        cpu: 4
+        memory: 4Gi
+        ephemeral-storage: 1Gi
+      requests:
+        cpu: 2
+        memory: 2Gi
+        ephemeral-storage: 500Mi
+  persistence:
+    persistentVolumeClaim:
+      size: 1Ti
+      storageClassName: powerflex
+  imageCredentials:
+    repoPath: proj-enm/proj-adp-eric-ctrl-bro-drop
+eric-ctrl-brocli:
+  enabled: true
+  imageCredentials:
+    logshipper:
+      repoPath: proj-enm/proj-adp-log-released
+eric-enmsg-autoid-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 5644Mi
+      cpu: 600m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 6144Mi
+      cpu: 2000m
+      ephemeral-storage: 1500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-access-control:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 800Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1350Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-amos:
+  enabled: true
+  resources:
+    requests:
+      memory: 20280Mi
+      cpu: 1200m
+      ephemeral-storage: 2500Mi
+    limits:
+      memory: 20280Mi
+      cpu: 4000m
+      ephemeral-storage: 4500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 500Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 1000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+  archiveCron:
+    enabled: true
+    scheduleHour: 23
+    scheduleMinute: 45
+    retentionPeriod: 5
+    executionDays: 5
+  houseKeepingCron:
+    enabled: true
+    scheduleHour: 23
+    scheduleMinute: 30
+    heavyCommandRetention: 10
+    generalCommandRetention: 30
+eric-enmsg-autoprovisioning:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 950Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-cmevents:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 800Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1350Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 200Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 400Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-cmutilities:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1200Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 200Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 400Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-cmservice:
+  enabled: true
+  resources:
+    requests:
+      memory: 6144Mi
+      cpu: 900m
+      ephemeral-storage: 3000Mi
+    limits:
+      memory: 6144Mi
+      cpu: 3000m
+      ephemeral-storage: 3500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 3000Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 6000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-com-ecim-mscm:
+  enabled: true
+  resources:
+    requests:
+      memory: 7392Mi
+      cpu: 1200m
+      ephemeral-storage: 3000Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 3000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-comecimpolicy:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 1100Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1700Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-eventbasedclient:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1200Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-elex:
+  enabled: true
+  resources:
+    requests:
+      memory: 1000Mi
+      cpu: 200m
+    limits:
+      memory: 2000Mi
+      cpu: 500m
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enmsg-flowautomation:
+  enabled: true
+  resources:
+    requests:
+      memory: 3296Mi
+      cpu: 600m
+      ephemeral-storage: 800Mi
+    limits:
+      memory: 3596Mi
+      cpu: 2000m
+      ephemeral-storage: 1350Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-fls:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+      ephemeral-storage: 1200Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 2000m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-fm-alarm-processing:
+  enabled: true
+  resources:
+    requests:
+      memory: 8192Mi
+      cpu: 1200m
+      ephemeral-storage: 1500Mi
+    limits:
+      memory: 8192Mi
+      cpu: 4000m
+      ephemeral-storage: 2500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-fm-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 8192Mi
+      cpu: 1200m
+      ephemeral-storage: 1500Mi
+    limits:
+      memory: 8192Mi
+      cpu: 4000m
+      ephemeral-storage: 3000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 500Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 1000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-ip-service-management:
+  enabled: true
+  resources:
+    requests:
+      memory: 3296Mi
+      cpu: 300m
+      ephemeral-storage: 1150Mi
+    limits:
+      memory: 3596Mi
+      cpu: 1000m
+      ephemeral-storage: 1700Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-kpi-calc-serv:
+  enabled: true
+  resources:
+    requests:
+      memory: 7692Mi
+      cpu: 600m
+      ephemeral-storage: 2500Mi
+    limits:
+      memory: 8192Mi
+      cpu: 2000m
+      ephemeral-storage: 3500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-lcmservice:
+  enabled: true
+  resources:
+    requests:
+      memory: 3296Mi
+      cpu: 300m
+      ephemeral-storage: 3000Mi
+    limits:
+      memory: 3596Mi
+      cpu: 1000m
+      ephemeral-storage: 3500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-medrouter:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-msap:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 2000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-mscm:
+  enabled: true
+  resources:
+    requests:
+      memory: 7392Mi
+      cpu: 1200m
+      ephemeral-storage: 1500Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 2500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-mscmip:
+  enabled: true
+  resources:
+    requests:
+      memory: 6668Mi
+      cpu: 1200m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 6668Mi
+      cpu: 4000m
+      ephemeral-storage: 1500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-msfm:
+  enabled: true
+  resources:
+    requests:
+      memory: 5644Mi
+      cpu: 600m
+      ephemeral-storage: 2500Mi
+    limits:
+      memory: 6144Mi
+      cpu: 2000m
+      ephemeral-storage: 3500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-mspm:
+  enabled: true
+  resources:
+    requests:
+      memory: 7392Mi
+      cpu: 1200m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 2000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-mspmip:
+  enabled: true
+  resources:
+    requests:
+      memory: 7392Mi
+      cpu: 1200m
+      ephemeral-storage: 1100Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 2500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-mssnmpcm:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 1200m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 4620Mi
+      cpu: 4000m
+      ephemeral-storage: 1500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-nedo-serv:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-networkexplorer:
+  enabled: true
+  resources:
+    requests:
+      memory: 6144Mi
+      cpu: 1200m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 6144Mi
+      cpu: 4000m
+      ephemeral-storage: 1500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 1000Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 2000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-openidm:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 600m
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enmsg-pki-ra-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1200Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-pmic-router-policy:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 800Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-pmservice:
+  enabled: true
+  resources:
+    requests:
+      memory: 6144Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 6144Mi
+      cpu: 2000m
+      ephemeral-storage: 1200Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 500Mi
+      limits:
+        memory: 1000Mi
+        cpu: 2000m
+        ephemeral-storage: 1000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-cellserv:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 3000Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 7000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 200Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 400Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-security-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 7392Mi
+      cpu: 1200m
+      ephemeral-storage: 3000Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 5000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 500Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 1000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-sps-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 300m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 4620Mi
+      cpu: 1000m
+      ephemeral-storage: 1500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-sps-web-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 400Mi
+      cpu: 250m
+    limits:
+      memory: 1000Mi
+      cpu: 500m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enmsg-shmservice:
+  enabled: true
+  resources:
+    requests:
+      memory: 5344Mi
+      cpu: 600m
+      ephemeral-storage: 2500Mi
+    limits:
+      memory: 5644Mi
+      cpu: 2000m
+      ephemeral-storage: 3500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 5000Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 10000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-smrs-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 7362Mi
+      cpu: 1200m
+      ephemeral-storage: 4000Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 10000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-uiservice:
+  enabled: true
+  resources:
+    requests:
+      memory: 5120Mi
+      cpu: 600m
+      ephemeral-storage: 800Mi
+    limits:
+      memory: 5120Mi
+      cpu: 2000m
+      ephemeral-storage: 1350Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 5000Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 10000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-web-push-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 5096Mi
+      cpu: 300m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 5096Mi
+      cpu: 1000m
+      ephemeral-storage: 1200Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 250Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-supervisionclient:
+  enabled: true
+  resources:
+    requests:
+      memory: 3296Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 3596Mi
+      cpu: 2000m
+      ephemeral-storage: 1200Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-visinaming-sb:
+  enabled: true
+  resources:
+    requests:
+      memory: 2048Mi
+      cpu: 600m
+    limits:
+      memory: 2048Mi
+      cpu: 2000m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enmsg-msnetlog:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 600m
+      ephemeral-storage: 2500Mi
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+      ephemeral-storage: 3000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-node-plugins:
+  enabled: true
+  resources:
+    requests:
+      memory: 3296Mi
+      cpu: 600m
+      ephemeral-storage: 1100Mi
+    limits:
+      memory: 3596Mi
+      cpu: 2000m
+      ephemeral-storage: 2000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-shm-core-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 5344Mi
+      cpu: 600m
+      ephemeral-storage: 1500Mi
+    limits:
+      memory: 5644Mi
+      cpu: 2000m
+      ephemeral-storage: 2500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 500Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 1000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-mssnmpfm:
+  enabled: true
+  resources:
+    requests:
+      memory: 7392Mi
+      cpu: 1200m
+      ephemeral-storage: 1150Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 1700Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-msapgfm:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 800Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1350Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-import-export-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 7392Mi
+      cpu: 1200m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 2000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 500Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 1000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-kpi-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 5644Mi
+      cpu: 600m
+      ephemeral-storage: 2000Mi
+    limits:
+      memory: 6144Mi
+      cpu: 2000m
+      ephemeral-storage: 2500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 2000Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 4000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-mscmapg:
+  enabled: true
+  resources:
+    requests:
+      memory: 7392Mi
+      cpu: 1200m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 7692Mi
+      cpu: 4000m
+      ephemeral-storage: 1200Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-nodecli:
+  enabled: true
+  resources:
+    requests:
+      memory: 3296Mi
+      cpu: 375m
+      ephemeral-storage: 1500Mi
+    limits:
+      memory: 3596Mi
+      cpu: 1250m
+      ephemeral-storage: 2500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 500Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 1000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-winfiol-sg:
+  enabled: false
+  resources:
+    requests:
+      memory: 7692Mi
+      cpu: 600m
+    limits:
+      memory: 8192Mi
+      cpu: 2000m
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enmsg-domain-proxy-coordinator:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 1000Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-general-scripting:
+  enabled: true
+  resources:
+    requests:
+      memory: 20280Mi
+      cpu: 1200m
+      ephemeral-storage: 4000Mi
+    limits:
+      memory: 20280Mi
+      cpu: 4000m
+      ephemeral-storage: 7000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 500Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 1000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+  sshdConfig:
+    MaxStartups: 10:30:100
+eric-enmsg-nb-fm-snmp:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 800Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1350Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-mskpirt:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 800Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1350Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-nbi-bnsi-fm:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 600m
+      ephemeral-storage: 1500Mi
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+      ephemeral-storage: 2000Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-visinaming-nb:
+  enabled: true
+  resources:
+    requests:
+      memory: 2048Mi
+      cpu: 600m
+    limits:
+      memory: 2048Mi
+      cpu: 2000m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enmsg-sa-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 1100Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 2000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-element-manager:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 600m
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enmsg-remotedesktop:
+  enabled: true
+  resources:
+    requests:
+      memory: 7168Mi
+      cpu: 600m
+    limits:
+      memory: 9216Mi
+      cpu: 2000m
+eric-enmsg-ops:
+  enabled: false
+  resources:
+    requests:
+      memory: 3596Mi
+      cpu: 600m
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+  persistentVolumeClaim:
+    size: 1Gi
+eric-enmsg-fm-history:
+  enabled: true
+  resources:
+    requests:
+      memory: 6144Mi
+      cpu: 600m
+      ephemeral-storage: 2500Mi
+    limits:
+      memory: 6144Mi
+      cpu: 2000m
+      ephemeral-storage: 3500Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-dlms:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 300m
+      ephemeral-storage: 1500Mi
+    limits:
+      memory: 4096Mi
+      cpu: 1000m
+      ephemeral-storage: 2100Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-dc-history:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 300m
+      ephemeral-storage: 2000Mi
+    limits:
+      memory: 4096Mi
+      cpu: 1000m
+      ephemeral-storage: 8000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enmsg-identity-mgmt-service:
+  enabled: true
+  resources:
+    requests:
+      memory: 4320Mi
+      cpu: 600m
+      ephemeral-storage: 650Mi
+    limits:
+      memory: 4620Mi
+      cpu: 2000m
+      ephemeral-storage: 1200Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enm-omnidaemon:
+  enabled: true
+  resources:
+    requests:
+      cpu: 300m
+    limits:
+      cpu: 1000m
+    brAgent:
+      requests:
+        ephemeral-storage: 200Mi
+      limits:
+        ephemeral-storage: 200Mi
+eric-enmsg-itservices:
+  enabled: true
+  resources:
+    requests:
+      memory: 3596Mi
+      cpu: 600m
+    limits:
+      memory: 4096Mi
+      cpu: 2000m
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+      limits:
+        memory: 300Mi
+        cpu: 200m
+eric-enm-int-log-transformer:
+  enabled: true
+  eric-log-transformer:
+    enabled: true
+    imageCredentials:
+      repoPath: proj-enm/proj-adp-log-released
+      logshipper:
+        repoPath: proj-enm/proj-adp-log-released
+eric-enmsg-nbalarmirp-1:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 600m
+      ephemeral-storage: 2500Mi
+    limits:
+      memory: 5120Mi
+      cpu: 2000m
+      ephemeral-storage: 3000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enmsg-nbalarmirp-2:
+  enabled: true
+  resources:
+    requests:
+      memory: 4096Mi
+      cpu: 600m
+      ephemeral-storage: 2500Mi
+    limits:
+      memory: 5120Mi
+      cpu: 2000m
+      ephemeral-storage: 3000Mi
+    httpd:
+      enabled: true
+      requests:
+        memory: 400Mi
+        cpu: 250m
+        ephemeral-storage: 50Mi
+      limits:
+        memory: 1000Mi
+        cpu: 500m
+        ephemeral-storage: 500Mi
+    monitoring:
+      enabled: true
+      requests:
+        memory: 200Mi
+        cpu: 50m
+        ephemeral-storage: 10Mi
+      limits:
+        memory: 300Mi
+        cpu: 200m
+        ephemeral-storage: 250Mi
+eric-enm-credm-controller:
+  enabled: true
+eric-enmsg-sso:
+  resources:
+    requests:
+      ephemeral-storage: 4500Mi
+    limits:
+      ephemeral-storage: 4500Mi
+    monitoring:
+      requests:
+        ephemeral-storage: 10Mi
+      limits:
+        ephemeral-storage: 250Mi
+    httpd:
+      requests:
+        ephemeral-storage: 50Mi
+      limits:
+        ephemeral-storage: 500Mi
+eric-enm-data-migration:
+  enabled: true
+  resources:
+    requests:
+      memory: 2048Mi
+      cpu: 300m
+    limits:
+      memory: 4096Mi
+      cpu: 1000m

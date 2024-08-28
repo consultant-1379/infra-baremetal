@@ -1,0 +1,117 @@
+{
+    "bios_settings": {
+        "WorkloadProfile": {
+            "Description": "Sets workload profile of the system",
+            "default": "Virtualization-MaxPerformance",
+            "valid_values": ["GeneralPowerEfficientCompute", "GeneralPeakFrequencyCompute", "GeneralThroughputCompute", "Virtualization-PowerEfficient",
+                "Virtualization-MaxPerformance", "LowLatency", "MissionCritical", "TransactionalApplicationProcessing", "HighPerformanceCompute(HPC)",
+                "DecisionSupport", "GraphicProcessing", "I/OThroughput", "Custom"]
+        },
+        "BootMode": {
+            "Description": "Sets boot mode of the system",
+            "default": "Uefi",
+            "valid_values": ["Uefi", "LegacyBios"]
+        },
+        "ProcHyperthreading": {
+            "Description": "When enabled each physical processor core operates as two logical processor cores",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "EmbSas1Enable": {
+            "Description": "Enables or disables local disks",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "EmbNicEnable": {
+            "Description": "Enables or disables HPE Ethernet 1GB 4-port 331i Adapter - NIC",
+            "default": "Disabled",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "EmbNicLinkSpeed": {
+            "Description": "Enables or disables link speed for HPE Ethernet 1GB 4-port 331i Adapter - NIC",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "EmbNicPCIeOptionROM": {
+            "Description": "Enables or disables option ROM for HPE Ethernet 1GB 4-port 331i Adapter - NIC",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "PciSlot1Enable": {
+            "Description": "Enables or disables HPE Ethernet 10Gb 2- port",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "PciSlot1LinkSpeed": {
+            "Description": "Enables or disables link speed for  HPE Ethernet 10Gb 2- port",
+            "default": "Auto",
+            "valid_values": ["Auto", "PCIe Generation 1.0", "PCIe Generation 2.0"]
+        },
+        "PciSlot1OptionROM": {
+            "Description": "Enables or disables option ROM for  HPE Ethernet 10Gb 2- port",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "PciSlot2Enable": {
+            "Description": "Enables or disables HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "PciSlot2LinkSpeed": {
+            "Description": "Enables or disables link speed for HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Auto", "PCIe Generation 1.0", "PCIe Generation 2.0"]
+        },
+        "PciSlot2OptionROM": {
+            "Description": "Enables or disables option ROM for HBA Mezzanine card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "PciSlot3Enable": {
+            "Description": "Enables or disables HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "PciSlot3LinkSpeed": {
+            "Description": "Enables or disables link speed for HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Auto", "PCIe Generation 1.0", "PCIe Generation 2.0"]
+        },
+        "PciSlot3OptionROM": {
+            "Description": "Enables or disables option ROM for HBA Mezzanine card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "FlexLom1Enable": {
+            "Description": "Enable or disable FlexLom1 10Gb Card",
+            "default": "Disabled",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "VirtualSerialPort": {
+            "Description": "Assigns the logical COM port address and associated default resources used by VSP",
+            "default": "Com1Irq4",
+            "valid_values": ["Com2Irq3", "Com1Irq4", "Disabled"]
+        },
+        "Slot1NicBoot1": {
+            "Description": "Enables or disables network boot for UEFI",
+            "default": "NetworkBoot",
+            "valid_values": ["NetworkBoot", "Disabled"]
+        },
+        "Slot1NicBoot2": {
+            "Description": "Enables or disables network boot for UEFI",
+            "default": "Disabled",
+            "valid_values": ["NetworkBoot", "Disabled"]
+        },
+        "Slot1NicBoot3": {
+            "Description": "Enables or disables network boot for UEFI",
+            "default": "Disabled",
+            "valid_values": ["NetworkBoot", "Disabled"]
+        },
+        "ServerName": {
+            "Description": "Server name as displayed in the iLO and BIOS",
+            "default": "%node_host_name%",
+            "valid_values": ["%node_host_name%"]
+        }
+
+    }
+}

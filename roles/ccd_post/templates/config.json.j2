@@ -1,0 +1,7 @@
+{
+        "auths": {
+                "registry.{{ deployment_name }}.{{ domain_name }}": {
+                        "auth": "{{ ['admin:', container_registry_password] | join('') | b64encode }}"
+                }
+        }
+}

@@ -1,0 +1,9 @@
+STARTMODE=auto
+BOOTPROTO=static
+ETHERDEVICE=bond0
+IPADDR={{ traffic_ip.ipv4.address }}/{{ traffic_cidr }}
+{% if network_deployment_type is defined and network_deployment_type == "dualstack" %}
+IPADDR_0={{ traffic_ip.ipv6.address }}/{{ traffic_cidr_ipv6 }}
+{% endif %}
+VLAN_ID={{ traffic_vlan_id }}
+VLAN=yes

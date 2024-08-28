@@ -1,0 +1,22 @@
+- name: Generate deployment_prefix
+  set_fact:
+    deployment_prefix: '{{ deployment_name | upper | regex_replace("\-","") }}'
+
+- name: Configure 3PAR storage
+  include_tasks: 3par.yml
+  tags:
+    - 3par
+  when: hpe3par_ip is defined and hpe3par_ip != ""
+
+- name: Configure Unity storage
+  include_tasks: unity.yml
+  tags:
+    - unity
+  when: unity_host is defined and unity_host != ""
+
+- name: Save server name and LUN WWN to JSON file
+  copy:
+    content: "{{ server_luns | to_nice_json }}"
+    dest: "/root/lun-wwn.json"
+  when: server_luns is defined and server_luns != []
+  delegate_to: kickstart

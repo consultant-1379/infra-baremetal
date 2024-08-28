@@ -1,0 +1,163 @@
+- name: "Build {{ vm_name }} VM"
+  block:
+    - name: "Check if {{ vm_name }} VM exists"
+      os_server_info:
+        server: "{{ vm_name }}"
+        filters:
+          vm_state: active
+      register: server_info
+
+    - name: Deploy client VM
+      block:
+        - name: Check if flavor already exists
+          os_flavor_info:
+            name: "{{ flavor.name }}"
+          register: flavor_info
+
+        - name: "Create {{ flavor.name }} flavor"
+          os_nova_flavor:
+            state: present
+            name: "{{ flavor.name }}"
+            ram: "{{ flavor.ram }}"
+            vcpus: "{{ flavor.vcpus }}"
+            disk: "{{ flavor.disk }}"
+            ephemeral: "{{ flavor.ephemeral }}"
+            extra_specs: "{{ flavor_properties }}"
+          #when: flavor_info.openstack_flavors | length == 0
+
+        - name: "Create {{ network }} network"
+          os_network:
+            state: present
+            name: "{{ network }}"
+          register: internal_net
+
+        - name: "Create {{ network }}_ipv4 subnet"
+          os_subnet:
+            state: present
+            network_name: "{{ network }}"
+            name: "{{ network }}_ipv4"
+            cidr: 192.168.0.0/24
+            dns_nameservers: "{{ dns_servers }}"
+
+        # - name: "Create {{ network | regex_replace('_internal','') }}_router"
+        #   os_router:
+        #     state: present
+        #     name: "{{ network | regex_replace('_internal','') }}_router"
+        #     project: '{{ "baremetal_client" if deployment_type == "baremetal" else project_name }}'
+        #     network: '{{ floating_network }}'
+        #     enable_snat: True
+        #     interfaces:
+        #       - '{{ network }}_ipv4'
+
+        - name: "Create {{ security_group }} security group"
+          os_security_group:
+            name: "{{ security_group }}"
+            state: present
+
+        - name: Add security group rules
+          os_security_group_rule:
+            security_group: "{{ security_group }}"
+            direction: "{{rule.direction}}"
+            protocol: "{{rule.protocol}}"
+            port_range_min: "{{rule.port_min}}"
+            port_range_max: "{{rule.port_max}}"
+            remote_ip_prefix: 0.0.0.0/0
+          loop: "{{ securitygroup_rules }}"
+          loop_control:
+            loop_var: rule
+
+        # - name: Create keypair
+        #   os_keypair:
+        #     name: "{{ keypair_name }}"
+        #     public_key_file: "{{ public_keyfile }}"
+
+        - name: "Check if {{ output_image }} image already exists"
+          os_image_info:
+            image: "{{ output_image }}"
+          register: image_info
+
+        # - name: Rebuild bmccd_client image
+        #   block:
+        #     - name: Get ID for the floating IP address for the Packer builder VM
+        #       shell: "python3 -c 'import openstack;c=openstack.connect(load_env_vars=True);print(c.list_floating_ips({\"floating_ip_address\":\"{{ builder_floating_ip }}\"})[0].id)'"
+        #       register: getip
+
+        #     - name: Get floating ip ID
+        #       set_fact:
+        #         floating_ip_id: '{{ getip.stdout }}'
+
+        #     - name: Download base image from repo server
+        #       get_url:
+        #         url: '{{ baseimageurl }}'
+        #         dest: /tmp/base_image
+
+        #     - name: Create base image
+        #       os_image:
+        #         name: '{{ baseimage }}'
+        #         state: present
+        #         filename: /tmp/base_image
+        #         disk_format: qcow2
+        #         container_format: bare
+        #         protected: yes
+        #         is_public: no
+        #         wait: yes
+
+        #     - name: "Get image id of {{ baseimage }}"
+        #       os_image_info:
+        #         image: '{{ baseimage }}'
+        #       register: baseimage_info
+
+        #     - name: Create /tmp/ccd_client.pkr.hcl from template
+        #       template:
+        #         src: ccd_client.pkr.hcl.j2
+        #         dest: /tmp/ccd_client.pkr.hcl
+
+        #     - name: Build image for bmccd-client VM
+        #       shell: "packer build -var 'floating_ip_id={{ floating_ip_id }}'  /tmp/ccd_client.pkr.hcl"
+        #       args:
+        #         chdir: '{{ role_path }}/files/'
+        #         executable: /bin/bash
+        #       register: packer_build
+        #       ignore_errors: yes
+
+        #     - debug:
+        #         msg: '{{ packer_build.stdout }}'
+
+        #     - name: Fail if packer build fails
+        #       fail:
+        #         msg: "Packer build failed"
+        #       when: packer_build.rc != 0
+
+        #     - name: Delete base image from /tmp
+        #       file:
+        #         path: /tmp/base_image
+        #         state: absent
+
+        #   when: not image_info.openstack_image
+
+        - name: Create terraform_project_path variable
+          set_fact:
+            terraform_project_path: "/tmp/{{ deployment_name }}_terraform/"
+
+        - name: "Create terraform directory for {{ deployment_name }}"
+          file:
+            path: "{{ terraform_project_path }}"
+            state: directory
+
+        - name: Create ccd.tf file
+          template:
+            src: ccd.tf.j2
+            dest: "{{ terraform_project_path}}/ccd.tf"
+
+        - name: Terraform VMs
+          terraform:
+            project_path: "{{ terraform_project_path}}"
+            state: present
+            force_init: true
+
+      when: not server_info.openstack_servers
+      always:
+        - name: Clean up temp directory
+          file:
+            path: "{{ terraform_project_path }}"
+            state: absent

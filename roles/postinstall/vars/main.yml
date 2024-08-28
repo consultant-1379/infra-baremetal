@@ -1,0 +1,64 @@
+sysctl_settings:
+  - name: net.ipv4.ip_forward
+    value: 1
+  - name: net.ipv6.conf.all.forwarding
+    value: 1
+  - name: '{% raw %}net.ipv4.conf.{{rp_filter_iface}}.rp_filter{% endraw %}'
+    value: 2
+  - name: net.bridge.bridge-nf-call-iptables
+    value: 1
+
+extra_packages:
+  - docker
+  - containerd
+  - nfs-utils
+  - supportutils
+  - python3-docker
+  - htop
+  - rsyslog
+  - rsyslog-module-gtls
+  - lvm2
+  - e2fsprogs
+  - xfsprogs
+  - kernel-default
+  - unzip
+  - jq
+  - bash-completion
+  - systemd-coredump
+  - irqbalance
+  - tcpdump
+  - strace
+  - bind-utils
+  - psmisc
+  - iotop
+  - sysstat
+  - iftop
+
+repo_base_url: https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/
+repos:
+  - "SLE-15-{{ sp_version }}-Module-Basesystem"
+  - "SLE-15-{{ sp_version }}-Module-Development-Tools"
+  - "SLE-15-{{ sp_version }}-Product-SLES"
+  - "SLE-15-{{ sp_version }}-Module-Basesystem-Updates"
+  - "SLE-15-{{ sp_version }}-Module-Containers"
+  - "SLE-15-{{ sp_version }}-Module-Containers-Updates"
+  - "SLE-15-{{ sp_version }}-Module-Server-Applications-Updates"
+
+http_proxy: http://atproxy2.athtem.eei.ericsson.se:3128
+
+ifcfg_templates:
+ - ifcfg-bond0.j2
+ - ifcfg-traffic.j2
+ - ifroute-traffic.j2
+ - ifcfg-nfs.j2
+ - ifcfg-internal.j2
+
+rack_interfaces:
+  - p3p1
+  - p3p2
+
+rack_two_nic_interfaces:
+  - p2p1
+  - p2p2
+  - p3p1
+  - p3p2

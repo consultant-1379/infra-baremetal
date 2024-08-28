@@ -1,0 +1,226 @@
+floating_ips:
+  bmccd0:
+    floating_ip: 10.232.164.180
+    fixed_ip: 192.168.0.180
+  bmccd1:
+    floating_ip: 10.232.164.181
+    fixed_ip: 192.168.0.181
+  bmccd2:
+    floating_ip: 10.232.164.182
+    fixed_ip: 192.168.0.182
+  bmccd3:
+    floating_ip: 10.232.164.183
+    fixed_ip: 192.168.0.183
+  bmccd4:
+    floating_ip: 10.232.164.184
+    fixed_ip: 192.168.0.184
+  bmccd5:
+    floating_ip: 10.232.164.185
+    fixed_ip: 192.168.0.185
+  ccd-client-01:
+    floating_ip: 10.232.209.11
+    fixed_ip: 192.168.0.11
+  ccd-client-02:
+    floating_ip: 10.232.209.12
+    fixed_ip: 192.168.0.12
+  ccd-client-03:
+    floating_ip: 10.232.209.13
+    fixed_ip: 192.168.0.13
+  ccd-client-04:
+    floating_ip: 10.232.209.14
+    fixed_ip: 192.168.0.14
+  ccd-client-05:
+    floating_ip: 10.59.148.10
+    fixed_ip: 192.168.0.10
+  ccd-client-06:
+    floating_ip: 10.150.200.238
+    fixed_ip: 192.168.0.238
+  ccd-client-07:
+    floating_ip: 10.150.200.239
+    fixed_ip: 192.168.0.239
+  ccd-client-08:
+    floating_ip: 10.150.200.240
+    fixed_ip: 192.168.0.240
+  ccd-client-09:
+    floating_ip: 10.150.200.241
+    fixed_ip: 192.168.0.241
+  ccd-client-10:
+    floating_ip: 10.150.200.242
+    fixed_ip: 192.168.0.242
+  ccd-client-11:
+    floating_ip: 10.150.200.243
+    fixed_ip: 192.168.0.243
+  ccd-client-12:
+    floating_ip: 10.150.200.244
+    fixed_ip: 192.168.0.244
+  ccd-client-13:
+    floating_ip: 10.150.118.20
+    fixed_ip: 192.168.0.20
+  ccd-client-14:
+    floating_ip: 10.150.127.15
+    fixed_ip: 192.168.0.15
+  ccd-client-15:
+    floating_ip: 10.232.209.16
+    fixed_ip: 192.168.0.16
+  ccd-client-16:
+    floating_ip: 10.232.209.17
+    fixed_ip: 192.168.0.17
+  ccd-client-17:
+    floating_ip: 10.150.35.9
+    fixed_ip: 192.168.0.9
+  ccd-client-18:
+    floating_ip: 10.150.35.10
+    fixed_ip: 192.168.0.10
+  ccd-client-19:
+    floating_ip: 10.150.35.11
+    fixed_ip: 192.168.0.11
+  ccd-client-20:
+    floating_ip: 10.150.35.12
+    fixed_ip: 192.168.0.12
+  ccd-client-21:
+    floating_ip: 10.150.55.9
+    fixed_ip: 192.168.0.9
+  ccd-client-22:
+    floating_ip: 10.150.55.10
+    fixed_ip: 192.168.0.10
+  # temporary vm in cloud12a
+  ccd-client-23:
+    floating_ip: 10.232.5.12
+    fixed_ip: 192.168.0.12
+  ccd-client-24:
+    floating_ip: 10.150.141.12
+    fixed_ip: 192.168.0.12
+  ccd-client-25:
+    floating_ip: 10.150.141.13
+    fixed_ip: 192.168.0.13
+  ccd-client-26:
+    floating_ip: 10.232.209.18
+    fixed_ip: 192.168.0.18
+  ccd-client-27:
+    floating_ip: 10.150.141.14
+    fixed_ip: 192.168.0.14
+  ccd-client-28:
+    floating_ip: 10.150.141.15
+    fixed_ip: 192.168.0.15
+  # 10.150.141.16 is in use by ccd_client_router in cloud15a
+  ccd-client-29:
+    floating_ip: 10.150.141.17
+    fixed_ip: 192.168.0.17
+  ccd-client-30:
+    floating_ip: 10.150.141.18
+    fixed_ip: 192.168.0.18
+  ccd-client-31:
+    floating_ip: 10.232.209.19
+    fixed_ip: 192.168.0.19
+  ccd-client-32:
+    floating_ip: 10.232.209.15
+    fixed_ip: 192.168.0.15
+
+os_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  33353063323735643264316334646365663433343039636632346630636664353135383030343536
+  6464646234346535616466376633316538336339376534630a336433326337353033356635666439
+  37663363383933313933323266316534626135373032393131613534636439336535663334376164
+  3933626161393064370a336266646562633631316230326165666237643337383136313830303864
+  6236
+
+securitygroup_rules:
+  - direction: ingress
+    protocol: icmp
+    port_min: -1
+    port_max: -1
+  - direction: ingress
+    protocol: tcp
+    port_min: 22
+    port_max: 22
+
+bmadm_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  38623230336635663437356266326233656364303633346264653235353730373064613661363531
+  6562386335376366333734663462353136323339303932330a636466636664623136626461303834
+  37313264376639313636373734653763306538666534626363323163303533613939656261616137
+  3563663930636236350a373934653530643035373361393663633437373064373830343533336131
+  61663938626338643963316335653561393536323462316533303539353936663530356163666235
+  33663738646339353061626138633337363162383762353634376631303764656262623165313539
+  37333734636166323666393030313932393263643935376530333963366364386166656139653439
+  36623630323831663837313961383664316539366330636131353265316563656462363730346534
+  35646636623837643666363761656338636237643030333063306634393731363766
+
+cenm_build_password: !vault |
+  $ANSIBLE_VAULT;1.1;AES256
+  30323036346265313862366665663139646138626331396138646430316338653139616337373831
+  3666616561643463616562353966616564366535316333390a363838353431303061363932656132
+  64373637323962326164653564343835656465623865626166336335343165306133366530393533
+  3237363333373664640a326262343761326436343862333064346464653166636136356365643937
+  34613538643535396532636637323535363931363539356562306631373430623763336439613463
+  36653336666437343563653339383764373461313932636639663165306565396431393030633339
+  37333365366163366162383834663235346436643265343161633861383837636238363862386138
+  33303661643735613630653633666531386664363063636439366563646561633463333632656534
+  34333439383533643866313238326330303837333266393537626237373833326463
+
+clients:
+  baremetal:
+    image:
+      name: bmccd_client_ubuntu_20.04
+      url: "http://{{ repo_ip_address }}/repo/ubuntu/ubuntu-20.04-server-cloudimg-amd64.img"
+    flavor:
+      name: bmccd_client_flavor
+      vcpus: 4
+      ram: 16384
+      disk: 12
+      ephemeral: 0
+    network: baremetal_client_internal
+    project:
+      baremetal_client:
+        floating_network: Nova_Floating
+        builder_floating_ip: 10.232.164.179
+    deployment_files:
+      - admin.conf
+
+  openstack:
+    image:
+      name: ccd_client_ubuntu_20.04
+      url: "http://{{ repo_ip_address }}/repo/ubuntu/ubuntu-20.04-server-cloudimg-amd64.img"
+    flavor:
+      name: ostk_ccd_client
+      vcpus: 4
+      ram: 16384
+      disk: 12
+      ephemeral: 0
+    network: ccd_client_internal
+    project:
+      DE_INFRA_C10AF01:
+        floating_network: p0-opstk-10-Ext-Floating-2
+        builder_floating_ip: 10.150.127.14
+      ENM_Client_VM_C15AF01:
+        floating_network: p0-opstk-15a-Ext-Floating
+        builder_floating_ip: 10.150.141.12
+      DE_INFRA_C16AF01:
+        floating_network: P0-OpStk-16-Floating
+        builder_floating_ip: 10.232.209.10
+      ENM_Client_VM_C16BF01:
+        floating_network: p121-opstk-16b-floating
+        builder_floating_ip: 10.150.35.8
+      ENM_Client_VM_C16CF01:
+        floating_network: p121-opstk-16c-floating
+        builder_floating_ip: 10.150.55.8
+      DE_INFRA_C11AF02:
+        floating_network: nova_floating
+        builder_floating_ip: 10.59.148.100
+        properties:
+          host: "std"
+      ENM_Client_VM_C14AF01:
+        floating_network: P0-OpStk-14-Ext-Floating
+        builder_floating_ip: 10.210.213.10
+      ENM_Client_VM_C12AF03:
+        floating_network: p9-opstk-12-ggn-floating
+        builder_floating_ip: 10.232.5.10
+      ENM_Client_VM_C13AF07:
+        floating_network: p121-opstk-13a-Ext-Floating
+        builder_floating_ip: 10.150.118.20
+      ENM_Client_VM_C11AF01:
+        floating_network: nova_floating
+        builder_floating_ip: 10.59.148.9
+      ENM_Client_VM_C17AF03:
+        floating_network: p122-opstk-17a-floating
+        builder_floating_ip: 10.150.200.245

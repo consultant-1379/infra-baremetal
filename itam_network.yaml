@@ -1,0 +1,19 @@
+---
+- hosts: nodes,kickstart
+  gather_facts: True
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+  tasks:
+    - name: Record Info in CSV file
+      template:
+        src: "itam_export.csv.j2"
+        dest: "/tmp/{{ deployment_name }}-itam.csv"
+      delegate_to: localhost
+      run_once: True
+    - name: "Save {{ deployment_name }} itam CSV to {{ deployment_name }}-ks"
+      copy:
+        src: "/tmp/{{ deployment_name }}-itam.csv"
+        dest: "~/{{ deployment_name }}.csv"
+        backup: yes
+      delegate_to: kickstart
+      run_once: True

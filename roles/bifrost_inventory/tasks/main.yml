@@ -1,0 +1,15 @@
+---
+- name: Set variables
+  set_fact:
+    cloud_dir: "deployments/{{ deployment_name }}"
+    inventory_file: "/root/bifrost_inventory.json"
+
+- name: Create inventory file on bifrost VM
+  template:
+    src: bifrost_inventory.json.j2
+    dest: "{{ inventory_file }}"
+
+- name: Create resolved.conf file on bifrost VM
+  template:
+    src: resolved.conf.j2
+    dest: /root/test_resolved.conf

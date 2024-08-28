@@ -1,0 +1,24 @@
+{% for n in new_nodes %}
+{
+  {% if loop.index0 < master_count %}
+  '"{{ n.name }}": {'
+  {% else %}
+  '"{{ n.name }}": {'
+  {% endif %}
+    "driver_info":{
+      "ipmi_username": '"{{ pm_user }}"',
+      "ipmi_address": '"{{ n.ilo_ip }}"',
+      "ipmi_password": '"{{ pm_password }}"'
+    },
+    "nics": [
+      {
+      "mac": '"{{ n.mac }}"'
+      }
+    ],
+    "driver": "ipmi",
+    "ipv4_address": '"{{ pool_start | default(provisioning_pool_start) | ipmath(loop.index0) }}"',
+    "name": '"{{ n.name }}"'
+  }
+}{% if not loop.last %},
+{% endif %}
+{% endfor %}

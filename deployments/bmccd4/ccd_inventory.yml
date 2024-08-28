@@ -1,0 +1,334 @@
+nodes:
+  children:
+    blades: {}
+    racks: {}
+  
+  vars: 
+    ansible_user: bmadm
+    ansible_ssh_common_args: " -o StrictHostKeyChecking=no "
+
+ungrouped:
+  hosts:
+    kickstart:
+      ansible_host: 10.232.222.11
+      ansible_user: root
+
+racks:
+  hosts:
+    ieatbmx7869-master-0:
+      ansible_host: 10.232.222.12
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.139
+      traffic_ip: 10.232.222.139
+      nfs_ip: 10.232.224.10
+      storage1_ip: 10.232.224.139
+      storage2_ip: 10.232.238.10
+      bmc:
+        type: hp
+        ip: 10.232.179.85
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:44:AC
+    ieatbmx7870-master-1:
+      ansible_host: 10.232.222.13
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.140
+      traffic_ip: 10.232.222.140
+      nfs_ip: 10.232.224.11
+      storage1_ip: 10.232.224.140
+      storage2_ip: 10.232.238.11
+      bmc:
+        type: hp
+        ip: 10.232.179.86
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E5:D4:A4
+    ieatbmx7871-master-2:
+      ansible_host: 10.232.222.14
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.141
+      traffic_ip: 10.232.222.141
+      nfs_ip: 10.232.224.12
+      storage1_ip: 10.232.224.141
+      storage2_ip: 10.232.238.12
+      bmc:
+        type: hp
+        ip: 10.232.179.87
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:82:90
+    ieatbmx7872-worker-0:
+      ansible_host: 10.232.222.15
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.142
+      traffic_ip: 10.232.222.142
+      nfs_ip: 10.232.224.13
+      storage1_ip: 10.232.224.142
+      storage2_ip: 10.232.238.13
+      bmc:
+        type: hp
+        ip: 10.232.179.88
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E5:D6:C4
+    ieatbmx7873-worker-1:
+      ansible_host: 10.232.222.16
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.143
+      traffic_ip: 10.232.222.143
+      nfs_ip: 10.232.224.14
+      storage1_ip: 10.232.224.143
+      storage2_ip: 10.232.238.14
+      bmc:
+        type: hp
+        ip: 10.232.179.89
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:44:E4
+    ieatbmx7874-worker-2:
+      ansible_host: 10.232.222.17
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.144
+      traffic_ip: 10.232.222.144
+      nfs_ip: 10.232.224.15
+      storage1_ip: 10.232.224.144
+      storage2_ip: 10.232.238.15
+      bmc:
+        type: hp
+        ip: 10.232.179.90
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:78:60
+    ieatbmx7875-worker-3:
+      ansible_host: 10.232.222.18
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.145
+      traffic_ip: 10.232.222.145
+      nfs_ip: 10.232.224.16
+      storage1_ip: 10.232.224.145
+      storage2_ip: 10.232.238.16
+      bmc:
+        type: hp
+        ip: 10.232.179.91
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:48:A0
+    ieatbmx7876-worker-4:
+      ansible_host: 10.232.222.19
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.146
+      traffic_ip: 10.232.222.146
+      nfs_ip: 10.232.224.17
+      storage1_ip: 10.232.224.146
+      storage2_ip: 10.232.238.17
+      bmc:
+        type: hp
+        ip: 10.232.179.92
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:7D:C0
+    ieatbmx7877-worker-5:
+      ansible_host: 10.232.222.20
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.147
+      traffic_ip: 10.232.222.147
+      nfs_ip: 10.232.224.18
+      storage1_ip: 10.232.224.147
+      storage2_ip: 10.232.238.18
+      bmc:
+        type: hp
+        ip: 10.232.179.93
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:83:50
+    ieatbmx7878-worker-6:
+      ansible_host: 10.232.222.21
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.148
+      traffic_ip: 10.232.222.148
+      nfs_ip: 10.232.224.19
+      storage1_ip: 10.232.224.148
+      storage2_ip: 10.232.238.19
+      bmc:
+        type: hp
+        ip: 10.232.179.94
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:79:54
+    ieatbmx7879-worker-7:
+      ansible_host: 10.232.222.22
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.149
+      traffic_ip: 10.232.222.149
+      nfs_ip: 10.232.224.20
+      storage1_ip: 10.232.224.149
+      storage2_ip: 10.232.238.20
+      bmc:
+        type: hp
+        ip: 10.232.179.95
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:7B:58
+    ieatbmx7880-worker-8:
+      ansible_host: 10.232.222.23
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.150
+      traffic_ip: 10.232.222.150
+      nfs_ip: 10.232.224.21
+      storage1_ip: 10.232.224.150
+      storage2_ip: 10.232.238.21
+      bmc:
+        type: hp
+        ip: 10.232.179.96
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:44:A0
+    ieatbmx7881-worker-9:
+      ansible_host: 10.232.222.24
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.151
+      traffic_ip: 10.232.222.151
+      nfs_ip: 10.232.224.22
+      storage1_ip: 10.232.224.151
+      storage2_ip: 10.232.238.22
+      bmc:
+        type: hp
+        ip: 10.232.179.97
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:3D:84
+    ieatbmx7882-worker-10:
+      ansible_host: 10.232.222.25
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.152
+      traffic_ip: 10.232.222.152
+      nfs_ip: 10.232.224.23
+      storage1_ip: 10.232.224.152
+      storage2_ip: 10.232.238.23
+      bmc:
+        type: hp
+        ip: 10.232.179.98
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:43:24
+    ieatbmx7883-worker-11:
+      ansible_host: 10.232.222.26
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.153
+      traffic_ip: 10.232.222.153
+      nfs_ip: 10.232.224.24
+      storage1_ip: 10.232.224.153
+      storage2_ip: 10.232.238.24
+      bmc:
+        type: hp
+        ip: 10.232.179.99
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:41:E0
+    ieatbmx7884-worker-12:
+      ansible_host: 10.232.222.27
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.154
+      traffic_ip: 10.232.222.154
+      nfs_ip: 10.232.224.25
+      storage1_ip: 10.232.224.154
+      storage2_ip: 10.232.238.25
+      bmc:
+        type: hp
+        ip: 10.232.179.100
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:79:9C
+    ieatbmx7885-worker-13:
+      ansible_host: 10.232.222.28
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.155
+      traffic_ip: 10.232.222.155
+      nfs_ip: 10.232.224.26
+      storage1_ip: 10.232.224.155
+      storage2_ip: 10.232.238.26
+      bmc:
+        type: hp
+        ip: 10.232.179.101
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E4:81:18
+    ieatbmx7886-worker-14:
+      ansible_host: 10.232.222.29
+      ansible_internal:
+         ipv4:
+           address: 10.232.203.156
+      traffic_ip: 10.232.222.156
+      nfs_ip: 10.232.224.27
+      storage1_ip: 10.232.224.156
+      storage2_ip: 10.232.238.27
+      bmc:
+        type: hp
+        ip: 10.232.179.102
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: 48:DF:37:E5:DA:08
+ 
+
+# Groups and variables for CCD install
+all:
+  vars:
+    nfs_provisioner_enabled: true
+    container_registry_enabled: false
+    ccd_licensing_enabled: false
+    kube_apiserver_ip: 10.232.203.138
+    kube_api_ingress_host: api.bmccd4.athtem.eei.ericsson.se
+    kube_api_vip_enabled: true
+    keepalived_virtual_router_id: 100
+    kubernetes_interface_override: internal
+    calico_ip_autodetection_method: "interface=internal"
+    pm_server_volume_storage_class: erikube-nfs
+    timezone: Europe/Dublin
+
+etcd:
+  hosts:
+    ieatbmx7869-master-0:
+    ieatbmx7870-master-1:
+    ieatbmx7871-master-2:
+
+master:
+  hosts:
+    ieatbmx7869-master-0:
+    ieatbmx7870-master-1:
+    ieatbmx7871-master-2:
+
+worker:
+  hosts:
+    ieatbmx7872-worker-0:
+    ieatbmx7873-worker-1:
+    ieatbmx7874-worker-2:
+    ieatbmx7875-worker-3:
+    ieatbmx7876-worker-4:
+    ieatbmx7877-worker-5:
+    ieatbmx7878-worker-6:
+    ieatbmx7879-worker-7:
+    ieatbmx7880-worker-8:
+    ieatbmx7881-worker-9:
+    ieatbmx7882-worker-10:
+    ieatbmx7883-worker-11:
+    ieatbmx7884-worker-12:
+    ieatbmx7885-worker-13:
+    ieatbmx7886-worker-14:
+

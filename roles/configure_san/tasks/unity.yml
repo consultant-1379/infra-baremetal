@@ -1,0 +1,90 @@
+- name: Set volume name format
+  set_fact:
+    volume_name_format: '{{ deployment_prefix }}_{% raw %}{{ server }}{% endraw %}_boot_lun'
+
+- name: "Create LUNs on {{ unity_host }}"
+  block:
+    - name: Create boot LUN
+      dellemc.unity.volume:
+        unispherehost: '{{ unity_host }}'
+        username: '{{ unity_user }}'
+        password: '{{ unity_password }}'
+        verifycert: no
+        hlu: 0
+        mapping_state: mapped
+        host_name: '{{ server }}'
+        vol_name: '{{ volume_name_format }}'
+        pool_name: '{{ unity_pool }}'
+        size: '{{ size }}'
+        state: present
+      register: luns
+      loop: '{{ servers }}'
+      loop_control:
+        loop_var: server
+        label: '{{ server }}'
+
+    - name: Save server name and LUN WWN
+      set_fact:
+        server_luns: '{{ server_luns|default({}) | combine({ result.server: result.volume_details.wwn | regex_replace(":","") | lower }) }}'
+      loop: "{{ luns.results }}"
+      loop_control:
+        loop_var: result
+        label: '{{ result.server }}'
+  when: delete_unity_luns is not defined
+
+- name: "Cleanup LUNs from {{ unity_host }}"
+  block:
+    - name: Get list of volumes to be deleted
+      set_fact:
+        volumes_to_delete: '{{ volumes_to_delete | default([]) + [ volume_name_format ] }}'
+      loop: '{{ servers }}'
+      loop_control:
+        loop_var: server
+        label: '{{ server }}'
+    - name: Confirm volume deletion
+      pause:
+        prompt: "Do you want to delete these volumes: {{ volumes_to_delete | join (', ') }}? (yes/no)"
+      register: confirm_delete
+
+    - name: Check volume deletion response
+      assert:
+        that: confirm_delete.user_input == "yes"
+        fail_msg: "Volume deletion cancelled."
+
+    - name: Remove host access from the boot LUN
+      dellemc.unity.volume:
+        unispherehost: '{{ unity_host }}'
+        username: '{{ unity_user }}'
+        password: '{{ unity_password }}'
+        verifycert: no
+        mapping_state: unmapped
+        host_name: '{{ server }}'
+        vol_name: '{{ deployment_prefix }}_{{ server }}_boot_lun'
+        pool_name: '{{ unity_pool }}'
+        size: '{{ size }}'
+        state: present
+      register: luns
+      loop: '{{ servers }}'
+      loop_control:
+        loop_var: server
+        label: '{{ server }}'
+
+    - name: Delete LUN
+      dellemc.unity.volume:
+        unispherehost: '{{ unity_host }}'
+        username: '{{ unity_user }}'
+        password: '{{ unity_password }}'
+        verifycert: no
+        mapping_state: unmapped
+        host_name: '{{ server }}'
+        vol_name: '{{ deployment_prefix }}_{{ server }}_boot_lun'
+        pool_name: '{{ unity_pool }}'
+        size: '{{ size }}'
+        state: absent
+      register: luns
+      loop: '{{ servers }}'
+      loop_control:
+        loop_var: server
+        label: '{{ server }}'
+
+  when: delete_unity_luns is defined and delete_unity_luns

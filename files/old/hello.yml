@@ -1,0 +1,12 @@
+---
+- hosts: hpe_3par
+  gather_facts: no
+  vars_files: 
+    - deployments/bmccd1/passwords.yml
+    - deployments/bmccd1/bmccd1.yml
+  tasks:
+    - name: Test 3par connectivity
+      raw: showwsapi
+      register: hpe3par_result
+    - debug:
+        var: hpe3par_result

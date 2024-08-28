@@ -1,0 +1,35 @@
+global:
+  repository: armdocker.rnd.ericsson.se/proj_oss_releases/enm/pmfilebench
+  storageClass: network-file-x3
+  loaddirSize: 1500Gi
+  command: "['java','-cp', '/pmfilebench/*', '-DlowThreads=400', '-DhighThreads=109', '-Diotest.length=4320', '-DprocessNodeB=true', 'writer.IoWriter', '/loaddir/', '/pmfilebench/60k_LTE.yaml']"
+
+eric-enm-rwxpvc-loaddir-1:
+  enabled: true
+
+eric-enm-rwxpvc-loaddir-2:
+  enabled: true
+
+eric-enm-rwxpvc-loaddir-3:
+  enabled: false
+
+eric-enm-rwxpvc-loaddir-4:
+  enabled: false
+
+eric-enm-rwxpvc-loaddir-5:
+  enabled: false
+
+pmfilebench-1:
+  enabled: true
+
+pmfilebench-2:
+  enabled: true
+
+pmfilebench-3:
+  enabled: false
+
+pmfilebench-4:
+  enabled: false
+
+pmfilebench-5:
+  enabled: false

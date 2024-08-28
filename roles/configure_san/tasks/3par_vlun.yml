@@ -1,0 +1,104 @@
+- name: Generate Virtual Volume ID
+  set_fact:
+    volume_id: '{{ volume_id_start + lun_index }}'
+
+- name: Generate volume name
+  set_fact:
+    volume_name: '{{volume_name_format}}'
+
+- name: Create VLUN
+  block:
+    - name: Create Volume "{{ volume_name }}"
+      hpe3par_volume:
+        storage_system_ip: "{{ hpe3par_ip }}"
+        storage_system_username: "{{ hpe3par_user }}"
+        storage_system_password: "{{ hpe3par_password }}"
+        state: present
+        volume_name: "{{ volume_name }}"
+        volume_id: "{{ volume_id }}"
+        type: thin
+        cpg: "{{ hpe3par_cpg }}"
+        size: "{{ size }}"
+        size_unit: GiB
+      register: vol_result
+
+    - name: Create VLUN
+      hpe3par_vlun:
+        storage_system_ip: "{{ hpe3par_ip }}"
+        storage_system_username: "{{ hpe3par_user }}"
+        storage_system_password: "{{ hpe3par_password }}"
+        state: export_volume_to_host
+        volume_name: "{{ volume_name }}"
+        host_name: "{{ server_hostname }}"
+        lunid: '{{ lunid | default(0) }}'
+
+    - name: "Get details of {{ volume_name }}"
+      uri:
+        url: "{{ hpe_3par_wsapi_url }}/volumes/{{ volume_name }}"
+        method: GET
+        headers:
+          Content-Type: "application/json"
+          X-HP3PAR-WSAPI-SessionKey: "{{ wsapi_session }}"
+          Accept: "application/json"
+        status_code: 200
+        return_content: yes
+        validate_certs: no
+      register: volume_output
+
+    - name: Save server name and LUN WWN
+      set_fact:
+        server_luns: '{{ server_luns|default({}) | combine({ server_hostname: volume_output.json.wwn|lower }) }}'
+
+  when: delete_3par_luns is undefined
+
+- name: Cleanup virtual volume and VLUN
+  block:
+    - name: Confirm volume deletion
+      pause:
+        prompt: "Do you want to delete {{ volume_name }} (yes/no)"
+      register: confirm_delete
+
+    - name: Check volume deletion response
+      assert:
+        that: confirm_delete.user_input == "yes"
+        fail_msg: "Volume deletion cancelled."
+
+    - name: Delete VLUN
+      hpe3par_vlun:
+        storage_system_ip: "{{ hpe3par_ip }}"
+        storage_system_username: "{{ hpe3par_user }}"
+        storage_system_password: "{{ hpe3par_password }}"
+        state: unexport_volume_from_host
+        volume_name: "{{ volume_name }}"
+        host_name: "{{ server_hostname }}"
+        lunid: '{{ lunid | default(0) }}'
+
+    - name: Delete Volume "{{ volume_name }}"
+      hpe3par_volume:
+        storage_system_ip: "{{ hpe3par_ip }}"
+        storage_system_username: "{{ hpe3par_user }}"
+        storage_system_password: "{{ hpe3par_password }}"
+        state: absent
+        volume_name: "{{ volume_name }}"
+        volume_id: "{{ volume_id }}"
+        type: thin
+        cpg: "{{ hpe3par_cpg }}"
+        size: "{{ size }}"
+        size_unit: GiB
+      vars:
+        volume_name: '{{ deployment_name }}_{{ server_hostname }}_VV_{{ volume_id }}'
+      register: vol_result
+
+    - name: "Confirm {{ volume_name }} is deleted"
+      uri:
+        url: "{{ hpe_3par_wsapi_url }}/volumes/{{ volume_name }}"
+        method: GET
+        headers:
+          Content-Type: "application/json"
+          X-HP3PAR-WSAPI-SessionKey: "{{ wsapi_session }}"
+          Accept: "application/json"
+        status_code: 404
+        return_content: yes
+        validate_certs: no
+
+  when: delete_3par_luns is defined and delete_3par_luns

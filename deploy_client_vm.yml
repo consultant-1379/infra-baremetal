@@ -1,0 +1,14 @@
+---
+- hosts: localhost
+  gather_facts: no
+  pre_tasks:
+    - name: Check for deployment_name variable
+      assert:
+        that: deployment_name is defined and deployment_name != ""
+        fail_msg: "The variable deployment_name must be specified in the ansible-playbook command"
+      run_once: yes
+  vars:
+    deployment_type: '{{ "baremetal" if deployment_name is match("^bmccd") else "openstack" }}'
+  roles:
+    - name: Deploy baremetal client VM
+      role: clientvm

@@ -1,0 +1,86 @@
+---
+- hosts: localhost
+  gather_facts: no
+  vars:
+    servers:
+      - ieatbm7184
+      - ieatbm7190
+    lunid: 200 # don't start at LUN 0 to prevent conflicts with LUNs which are already in use.
+    size: 2 # LUN size is 2GB
+    hpe3par_ip: ieat3par-12
+    hpe3par_user: ostkadm
+    hpe3par_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          65643466376364353765663436356263363261336237653432323937363837303262353935386563
+          3438333436633066336239336238363362643065316630350a333066656563343931653361383865
+          32616365663461346136333665623430643862326335646336616361396431653338343661383231
+          3931386663326663380a386535326365343230303535663131616334653531663731623762663335
+          3538
+    hpe3par_cpg: SSD_r6
+    volume_id_start: 300 # start above range used by existing bmccd deployments
+    deployment_name: bmccd10
+    cloud_dir: /tmp/bmccd10
+  tags:
+    - 3par
+  tasks:
+    - name: Test 3par functionality
+      block:
+        - name: "Create {{ cloud_dir }}"
+          file:
+            path: '{{ cloud_dir }}'
+            state: directory
+        - name: Run configure_san role for 3PAR
+          import_role:
+            name: configure_san
+      always:
+        - name: Cleanup after configure_san role for 3PAR
+          import_role:
+            name: configure_san
+            tasks_from: cleanup.yml
+        - name: "Clean up {{ cloud_dir }}"
+          file:
+            path: '{{ cloud_dir }}'
+            state: absent
+
+- hosts: localhost
+  gather_facts: no
+  vars:
+    deployment_name: bmccd10
+    cloud_dir: /tmp/bmccd10
+    lunid: 200 # don't start at LUN 0 to prevent conflicts with LUNs which are already in use.
+    size: 2 # LUN size is 2GB
+    unity_host: ieatunity-03.athtem.eei.ericsson.se
+    unity_user: admin
+    unity_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          35333665363832346362333363323731383338343363643334316630346364613334366365353062
+          3665613766386663356631363263656334316363363962630a333936346531383332623431346631
+          36623164393431336466373335643763386139376238316663393063393435363239356535386136
+          6336393938396638360a343330333762616234366137623533613931636462363761373832386132
+          3236
+    unity_pool: bmccd3_rwo
+    servers:
+      - ieatbm6319
+      - ieatbm5998
+  tags:
+    - unity
+  tasks:
+    - name: "Create {{ cloud_dir }}"
+      file:
+        path: '{{ cloud_dir }}'
+        state: directory
+
+    - name: Test configure_san for Unity
+      block:
+        - name: Run unity role
+          import_role:
+            name: configure_san
+      always:
+        - name: Cleanup after configure_san for Unity
+          import_role:
+            name: configure_san
+            tasks_from: cleanup.yml
+        - name: "Clean up {{ cloud_dir }}"
+          file:
+            path: '{{ cloud_dir }}'
+            state: absent

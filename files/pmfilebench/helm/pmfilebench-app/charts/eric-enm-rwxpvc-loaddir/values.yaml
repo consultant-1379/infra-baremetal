@@ -1,0 +1,6 @@
+## eric-enm-rwxpvc image version
+global:
+  storageClass: nfs-enm21
+  loaddirSize: 1Gi
+rwx:
+  loaddirName: loaddir

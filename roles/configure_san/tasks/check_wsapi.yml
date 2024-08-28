@@ -1,0 +1,32 @@
+- name: Check Web Services API (WSAPI) is running on the 3PAR
+  raw: showwsapi -d
+  register: showwsapi_result
+  delegate_to: hpe_3par
+
+- name: Save WSAPI service state
+  set_fact:
+    wsapi_enabled: '{{ showwsapi_result.stdout_lines | map("lower") | map("regex_replace"," ","") |select("match","servicestate")| first | regex_replace(".*:","") }}'
+    wsapi_active: '{{ showwsapi_result.stdout_lines | map("lower") | map("regex_replace"," ","") |select("match","serverstate")| first | regex_replace(".*:","") }}'
+    hpe_3par_wsapi_url: '{{ showwsapi_result.stdout_lines | map("lower") | map("regex_replace"," ","") |select("match","apiurl")| first | regex_replace("apiurl:","") }}'
+
+- name: Start WSAPI service if needed
+  block:
+    - name: Start WSAPI service
+      raw: startwsapi
+      register: startwsapi
+
+    - name: Check Web Services API (WSAPI) is running on the 3PAR
+      raw: showwsapi -d
+      register: showwsapi_result
+
+    - name: Save WSAPI service state
+      set_fact:
+        wsapi_enabled: '{{ showwsapi_result.stdout_lines | map("lower") | map("regex_replace"," ","") |select("match","servicestate")| first | regex_replace(".*:","") }}'
+        wsapi_active: '{{ showwsapi_result.stdout_lines | map("lower") | map("regex_replace"," ","") |select("match","serverstate")| first | regex_replace(".*:","") }}'
+        hpe_3par_wsapi_url: '{{ showwsapi_result.stdout_lines | map("lower") | map("regex_replace"," ","") |select("match","apiurl")| first | regex_replace("apiurl:","") }}'
+    - debug:
+        msg: "WSAPI is {{ wsapi_enabled }} and {{ wsapi_active }}"
+      when: startwsapi.changed
+  delegate_to: hpe_3par
+  when: wsapi_enabled != 'enabled' and wsapi_active != 'active'
+

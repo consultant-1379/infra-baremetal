@@ -1,0 +1,48 @@
+---
+- name: Add Rook helm chart repo
+  kubernetes.core.helm_repository:
+    name: rook-release
+    repo_url: https://charts.rook.io/release
+
+- name: Install Rook Operator
+  kubernetes.core.helm:
+    name: rook-ceph
+    chart_ref: rook-release/rook-ceph
+    chart_version: 1.9.11 # required to install older version of ceph
+    release_namespace: rook-ceph
+    create_namespace: true
+    update_repo_cache: yes
+    release_values: "{{ lookup('file','operator_values.yaml') | from_yaml }}"
+
+- name: Install Rook Cluster
+  kubernetes.core.helm:
+    name: rook-ceph-cluster
+    chart_ref: rook-release/rook-ceph-cluster
+    chart_version: 1.9.11 # required to install older version of ceph
+    release_namespace: rook-ceph
+    update_repo_cache: yes
+    release_values: "{{ lookup('template','cluster_values.yaml.j2') | from_yaml }}"
+
+- name: Wait 10 mins for all pods to deploy
+  pause:
+    minutes: 10
+
+- name: Get rook-ceph-tools pod details
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: rook-ceph
+    label_selectors:
+      - "app = rook-ceph-tools"
+  register: ceph_tools
+
+- name: Check Ceph Status
+  kubernetes.core.k8s_exec:
+    namespace: rook-ceph
+    pod: '{{ ceph_tools.resources.metadata.name }}'
+    command: ceph status
+  register: ceph_status
+  ignore_errors: True
+
+- name: Print Ceph status
+  debug:
+    var: ceph_status.stdout_lines

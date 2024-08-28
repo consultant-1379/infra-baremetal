@@ -1,0 +1,10 @@
+STARTMODE=auto
+BOOTPROTO=static
+IPADDR={{ ansible_internal.ipv4.address }}/{{ internal_cidr }}
+{% if network_deployment_type is defined and network_deployment_type == "dualstack" %}
+IPADDR_0={{ ansible_internal.ipv6.address }}/{{ internal_cidr_ipv6 }}
+{% endif %}
+ETHERDEVICE=bond0
+VLAN_ID={{ internal_vlan_id }}
+VLAN=yes
+MTU=9000

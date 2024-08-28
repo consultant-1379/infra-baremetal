@@ -1,0 +1,143 @@
+VM1
+read: IOPS=908
+slat (usec): avg=15.86
+clat (usec): avg=626.01
+lat (usec): avg=642.11
+VM2
+read: IOPS=910
+slat (usec): avg=11.95
+clat (usec): avg=609.56
+lat (usec): avg=621.72
+VM3
+read: IOPS=895
+slat (usec): avg=14.86
+clat (nsec): avg=625291.36
+lat (usec): avg=640.40
+VM4
+read: IOPS=894
+slat (usec): avg=13.86
+clat (usec): avg=619.37
+lat (usec): avg=633.47
+VM5
+read: IOPS=919
+slat (usec): avg=12.06
+clat (usec): avg=612.61
+lat (usec): avg=624.88
+VM6
+read: IOPS=898
+slat (usec): avg=14.68
+clat (usec): avg=623.06
+lat (usec): avg=638.00
+VM7
+read: IOPS=939
+slat (usec): avg=10.89
+clat (usec): avg=601.32
+lat (usec): avg=612.43
+VM8
+read: IOPS=941
+slat (usec): avg=10.72
+clat (usec): avg=603.45
+lat (usec): avg=614.38
+VM9
+read: IOPS=921
+slat (usec): avg=12.21
+clat (usec): avg=611.69
+lat (usec): avg=624.13
+VM10
+read: IOPS=939
+slat (usec): avg=10.73
+clat (usec): avg=600.54
+lat (usec): avg=611.45
+VM11
+read: IOPS=901
+slat (usec): avg=14.56
+clat (usec): avg=624.37
+lat (usec): avg=639.16
+VM12
+read: IOPS=912
+slat (usec): avg=13.98
+clat (usec): avg=626.15
+lat (usec): avg=640.36
+VM13
+read: IOPS=916
+slat (usec): avg=12.04
+clat (usec): avg=606.18
+lat (usec): avg=618.41
+
+
+read avg clat: 614.58472
+read iops: 11893
+
+
+VM1
+write: IOPS=2120
+slat (usec): avg=16.87
+clat (usec): avg=1590.67
+lat (usec): avg=1607.79
+VM2
+write: IOPS=2124
+slat (usec): avg=12.49
+clat (usec): avg=1600.50
+lat (usec): avg=1613.19
+VM3
+write: IOPS=2090
+slat (usec): avg=15.70
+clat (usec): avg=1619.49
+lat (usec): avg=1635.45
+VM4
+write: IOPS=2086
+slat (usec): avg=15.15
+clat (usec): avg=1626.40
+lat (usec): avg=1641.81
+VM5
+write: IOPS=2145
+slat (usec): avg=12.86
+clat (usec): avg=1580.26
+lat (usec): avg=1593.34
+VM6
+write: IOPS=2096
+slat (usec): avg=15.70
+clat (usec): avg=1615.19
+lat (usec): avg=1631.17
+VM7
+write: IOPS=2191
+slat (usec): avg=11.58
+clat (usec): avg=1547.73
+lat (usec): avg=1559.53
+VM8
+write: IOPS=2195
+slat (usec): avg=11.69
+clat (usec): avg=1543.73
+lat (usec): avg=1555.64
+VM9
+write: IOPS=2149
+slat (usec): avg=13.02
+clat (usec): avg=1577.29
+lat (usec): avg=1590.55
+VM10
+write: IOPS=2192
+slat (usec): avg=11.40
+clat (usec): avg=1548.15
+lat (usec): avg=1559.72
+VM11
+write: IOPS=2102
+slat (usec): avg=15.49
+clat (usec): avg=1609.05
+lat (usec): avg=1624.80
+VM12
+write: IOPS=2128
+slat (usec): avg=14.82
+clat (usec): avg=1586.45
+lat (usec): avg=1601.51
+VM13
+write: IOPS=2137
+slat (usec): avg=12.54
+clat (usec): avg=1590.72
+lat (usec): avg=1603.45
+
+
+write avg clat: 1587.356153846154
+write iops: 27755
+
+
+total iops: 39648

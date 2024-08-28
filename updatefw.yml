@@ -1,0 +1,10 @@
+---
+- hosts: localhost
+  gather_facts: no
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  roles:
+    - role: common
+    - role: firmware
+     

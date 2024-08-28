@@ -1,0 +1,100 @@
+- name: Configure PowerFlex CSI driver
+  block:
+    - name: Ensure powerflex namespace exists
+      kubernetes.core.k8s:
+        kind: Namespace
+        name: powerflex
+        state: present
+
+    - name: Copy powerflex CSI driver zip file
+      unarchive:
+        src: powerflex-csi.zip
+        dest: '/root'
+
+    - name: Find CSI driver directory
+      find:
+        path: /root/
+        file_type: directory
+        use_regex: yes
+        recurse: yes
+        patterns:
+          - '^csi-powerflex'
+      register: find_csi_install_dir
+
+    - name: Download and install Kubernetes Snapshot Support
+      include_tasks: dell_snapshot.yml
+
+    - name: Set csi_dir variable
+      set_fact:
+        csi_dir: "{{ find_csi_install_dir.files | map(attribute='path') | first}}"
+
+    - name: Copy files needed for CSI driver installation
+      template:
+        src: powerflex_values.yaml.j2
+        dest: '{{ csi_dir}}/powerflex_values.yaml'
+
+    - name: Create PowerFlex Secret and Storage Class files from template
+      template:
+        src: '{{ item }}'
+        dest: '/tmp/{{ item | regex_replace(".j2","") }}'
+      loop:
+        - powerflex_secret.yaml.j2
+        - powerflex_storage_class.yaml.j2
+      
+    - name: Create secret for PowerFlex CSI Driver
+      kubernetes.core.k8s:
+        src: /tmp/powerflex_secret.yaml
+
+    - name: Check if PowerFlex deployment already exists
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: powerflex-controller
+        namespace: powerflex
+      register: powerflex_csi_installed
+
+    - name: Create powerflex logging configmap
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: ConfigMap
+          metadata:
+            name: driver-config
+            namespace: powerflex
+          data:
+            driver-config.yaml: |
+              LOG_LEVEL: "INFO"
+              LOG_FORMAT: "TEXT"
+
+    - name: Install CSI driver
+      shell: './csi-install.sh --namespace powerflex --values {{ csi_dir}}/powerflex_values.yaml --release=powerflex --skip-verify-node --skip-verify'
+      args:
+        chdir: '{{ csi_dir }}/dell-csi-helm-installer'
+      register: csi_install
+      ignore_errors: yes
+      when:  powerflex_csi_installed.resources is defined and powerflex_csi_installed.resources|length == 0
+      environment:
+        KUBECONFIG: "/tmp/{{ deployment_name }}.admin.conf"
+
+    - name: Display output from CSI driver installation
+      debug:
+        msg: '{{ csi_install.stdout }}'
+      when: powerflex_csi_installed.resources is defined and powerflex_csi_installed.resources|length == 0
+
+    - name: Create StorageClass for PowerFlex CSI Driver
+      kubernetes.core.k8s:
+        src: /tmp/powerflex_storage_class.yaml
+
+  always:
+    - name: 'Cleanup {{ csi_dir }}'
+      file:
+        path: '{{ csi_dir }}'
+        state: absent
+
+    - name: 'Cleanup PowerFlex temp files'
+      file:
+        path: "/tmp/{{ item }}"
+        state: absent
+      loop:
+        - powerflex_secret.yaml
+        - powerflex_storage_class.yaml

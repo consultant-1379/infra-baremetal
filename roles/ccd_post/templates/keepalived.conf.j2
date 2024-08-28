@@ -1,0 +1,17 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+vrrp_instance worker_vip {
+    state {{ state }}
+    interface traffic
+    virtual_router_id 101
+    priority {{ priority }}
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass {{ worker_vip_password }}
+    }
+    virtual_ipaddress {
+         {% for vip in worker_vips %}
+         {{ vip }}
+         {% endfor %}
+    }
+}

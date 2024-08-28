@@ -1,0 +1,96 @@
+- name: Configure Unity CSI driver
+  block:
+    - name: Ensure unity namespace exists
+      kubernetes.core.k8s:
+        kind: Namespace
+        name: unity
+        state: present
+
+    - name: Copy unity CSI driver zip file
+      unarchive:
+        src: unity-csi.zip
+        dest: '/tmp'
+
+    - name: Find CSI driver directory
+      find:
+        path: /tmp/
+        file_type: directory
+        use_regex: yes
+        recurse: yes
+        patterns:
+          - '^csi-unity'
+      register: find_csi_install_dir
+
+    - name: Create csi_dir variable
+      set_fact:
+        csi_dir: "{{ find_csi_install_dir.files | map(attribute='path') | first }}"
+
+    - name: Download and install Kubernetes Snapshot Support
+      include_tasks: dell_snapshot.yml
+
+    - name: Copy files needed for CSI driver installation
+      template:
+        src: unity_values.yaml.j2
+        dest: '{{ csi_dir}}/unity_values.yaml'
+
+    - name: Get unity cert and save to /tmp
+      shell: openssl s_client -showcerts -connect {{ unity_host }}:443 </dev/null 2>/dev/null | openssl x509 -outform PEM > /tmp/ca_cert_0.pem
+
+    - name: Create secret for Unity CSI Driver
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: Opaque
+          metadata:
+            name: unity-creds
+            namespace: unity
+          data:
+            config: "{{ lookup('template','unity_secret.yaml.j2') | from_yaml| b64encode }}"
+
+    - name: Create secret for Unity CSI Driver
+      kubernetes.core.k8s:
+        state: present
+        definition:
+          apiVersion: v1
+          kind: Secret
+          type: Opaque
+          metadata:
+            name: unity-certs-0
+            namespace: unity
+          data:
+            cert-0: "{{ lookup('file','/tmp/ca_cert_0.pem') | b64encode }}"
+
+    - name: Check if unity deployment already exists
+      kubernetes.core.k8s_info:
+        kind: Deployment
+        name: unity-controller
+        namespace: unity
+      register: unity_csi_installed
+
+    - name: Install CSI driver
+      shell: './csi-install.sh --namespace unity --values {{ csi_dir}}/unity_values.yaml --skip-verify-node --skip-verify'
+      args:
+        chdir: '{{ csi_dir }}/dell-csi-helm-installer'
+      register: csi_install
+      ignore_errors: true
+      when:  unity_csi_installed.resources is defined and unity_csi_installed.resources|length == 0
+      environment:
+        KUBECONFIG: "/tmp/{{ deployment_name }}.admin.conf"
+
+    - name: Display output from CSI driver installation
+      debug:
+        msg: '{{ csi_install.stdout }}'
+      when: unity_csi_installed.resources is defined and unity_csi_installed.resources|length == 0
+
+    - name: Create unity storage class
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template', 'unity_storage_class.yaml.j2') }}"
+
+  always:
+    - name: 'Cleanup {{ csi_dir }}'
+      file:
+        path: '{{ csi_dir }}'
+        state: absent

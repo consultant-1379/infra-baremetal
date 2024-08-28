@@ -1,0 +1,114 @@
+- name: Get interface names for all nodes
+  block:
+    - name: Get list of interfaces
+      setup:
+        filter: ansible_interfaces
+      register: interface_list
+
+    - name: Save interface names
+      set_fact:
+        if_list: '{{ interface_list["ansible_facts"]["ansible_interfaces"] | select("match","^en[ops]") | sort_versions }}'
+
+    - name: Save original interface name
+      set_fact:
+        if_original: '{{ if_list | first }}'
+
+    - name: Refresh network device information
+      command: udevadm trigger
+
+    - name: Lookup network device information
+      shell: "udevadm info -q property /sys/class/net/{{ item }} | awk -F= '/SLOT/{ print $2 }'"
+      register: interface_name_rack
+      loop: '{{ if_list[:-2] }}'
+      when: nic_slot != "Embedded"
+
+    - name: Lookup network device information for onboard cards
+      shell: "udevadm info -q property /sys/class/net/{{ item }} | awk -F= '/ONBOARD/{ print $2 }'"
+      register: interface_name
+      loop: '{{ if_list[:2] }}'
+      when: nic_slot == "Embedded"
+
+    - name: Lookup network device information for PCI cards
+      shell: "udevadm info -q property /sys/class/net/{{ item }} | awk -F= '/SLOT/{ print $2 }'"
+      register: interface_name_slot
+      loop: '{{ if_list[-2:] }}'
+      when: nic_slot == "Embedded"
+
+    - name: Interface names for network file (rack only)
+      set_fact:
+        if_list: '{{ interface_name_rack.results | map(attribute="stdout") | list }}'
+      when: nic_slot != "Embedded"
+
+    - name: Interface names for network file (Embedded)
+      set_fact:
+        if_list: '{{ interface_name.results | map(attribute="stdout") | map("regex_search", "en[ops]\d*") | list }}'
+      when: nic_slot == "Embedded"
+    
+    - name: Interface names for network file (PCI)
+      set_fact:
+        if_list_slot: '{{ interface_name_slot.results | map(attribute="stdout") | list }}'
+      when: nic_slot == "Embedded"
+
+  run_once: yes
+
+- name: "Clean up {{ if_original }} network file"
+  file:
+    path: '/etc/sysconfig/network/ifcfg-{{ if_original }}'
+    state: absent
+
+- name: Copy network config files
+  template:
+    src: 'ifcfg-default.j2'
+    dest: '/etc/sysconfig/network/ifcfg-{{ item }}'
+  loop: '{{ if_list }}'
+
+- name: Copy /etc/sysconfig/network/config
+  copy:
+    src: network_config
+    dest: /etc/sysconfig/network/config
+
+- name: Create bond0 and traffic interfaces
+  template:
+    src: '{{ ifcfg_template }}'
+    dest: '/etc/sysconfig/network/{{ ifcfg_template | regex_replace(".j2","") }}'
+  loop: 
+    - ifcfg-bond0.j2
+    - ifcfg-internal.j2
+    - ifcfg-traffic.j2
+    - ifcfg-nfs.j2
+    - ifroute-traffic.j2
+    - ifroute-bond0.j2
+  loop_control:
+    loop_var: ifcfg_template
+  notify: restart_wicked
+  register: netcfg
+
+- name: Create bond1 and storage interfaces
+  template:
+    src: '{{ ifcfg_template }}'
+    dest: '/etc/sysconfig/network/{{ ifcfg_template | regex_replace(".j2","") }}'
+  loop: 
+    - ifcfg-bond1.j2
+    - ifcfg-storage1.j2
+    - ifroute-storage1.j2
+    - ifcfg-storage2.j2
+    - ifroute-storage2.j2
+  loop_control:
+    loop_var: ifcfg_template
+  notify: restart_wicked
+  register: netcfg
+  when: powerflex_host is defined and powerflex_host != ""
+
+- name: Create nfs routing when using powerstore
+  template:
+    src: 'ifroute-nfs.j2'
+    dest: '/etc/sysconfig/network/ifroute-nfs'
+  when: powerstore_ip is defined and powerstore_ip != ""
+
+- name: Create route for Jenkins on master nodes
+  template:
+    src: 'ifroute-internal.j2'
+    dest: '/etc/sysconfig/network/ifroute-internal'
+  notify: restart_wicked
+  when: inventory_hostname in groups["master"]
+  register: netcfg

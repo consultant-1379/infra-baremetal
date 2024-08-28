@@ -1,0 +1,69 @@
+- name: Reset iLO
+  uri:
+    url: https://{{ server.ilo_ip }}/redfish/v1/Managers/1/Actions/Manager.Reset/
+    force_basic_auth: yes
+    validate_certs: no
+    method: POST
+    body_format: json
+    body: { "Action": "{{ action }}" }
+    user: "{{ pm_user }}"
+    password: "{{ pm_password }}"
+  register: output
+  loop: '{{ nodes }}'
+  loop_control:
+    loop_var: server
+    label: '{{ server.name }}'
+  no_log: True
+
+- debug: msg="{{ output.results | map(attribute='json')| map(attribute='error')| list }}"
+
+- name: Wait until iLO is accessible via SSH
+  wait_for:
+    host: "{{ server.ilo_ip }}"
+    port: 22
+    delay: 10
+    sleep: 1
+    timeout: 300
+  register: ilo
+  loop: '{{ nodes }}'
+  loop_control:
+    loop_var: server
+    label: '{{ server.name }}'
+  no_log: True
+  failed_when:
+  - ilo.state is defined
+  - ilo.state != "started"
+
+- name: Wait until iLO is accessible via HTTP
+  wait_for:
+    host: "{{ server.ilo_ip }}"
+    port: 80
+    delay: 10
+    sleep: 1
+    timeout: 300
+  register: ilo
+  loop: '{{ nodes }}'
+  loop_control:
+    loop_var: server
+    label: '{{ server.name }}'
+  no_log: True
+  failed_when:
+  - ilo.state is defined
+  - ilo.state != "started"
+
+- name: Wait until iLO is accessible via SSL
+  wait_for:
+    host: "{{ server.ilo_ip }}"
+    port: 443
+    delay: 10
+    sleep: 1
+    timeout: 300
+  register: ilo
+  loop: '{{ nodes }}'
+  loop_control:
+    loop_var: server
+    label: '{{ server.name }}'
+  no_log: True
+  failed_when:
+  - ilo.state is defined
+  - ilo.state != "started"

@@ -1,0 +1,12 @@
+STARTMODE=auto
+BOOTPROTO=static
+BONDING_MASTER=yes
+{% if nic_slot == "Embedded" %}
+BONDING_SLAVE_0={{ if_list_slot[0] }}
+BONDING_SLAVE_1={{ if_list_slot[1] }}
+{% else %}
+BONDING_SLAVE_0={{ if_list[2] }}
+BONDING_SLAVE_1={{ if_list[3] }}
+{% endif %}
+BONDING_MODULE_OPTS='mode=active-backup miimon=100'
+MTU=9000

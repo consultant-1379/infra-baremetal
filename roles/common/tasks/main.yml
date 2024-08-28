@@ -1,0 +1,12 @@
+- name: Get information from OA/iLOs
+  import_tasks: getilos.yml
+  when: is_hpe_deployment |bool
+
+- name: Get information on Dell servers
+  include_role:
+    name: common
+    tasks_from: get_dell_servers.yml
+  when: is_dell_deployment | bool
+  tags:
+    - deploy
+    - get_server_info

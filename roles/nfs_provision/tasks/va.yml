@@ -1,0 +1,79 @@
+---
+# tasks to create file systems and shares on Veritas Access NAS
+- name: Create NAS file systems and NFS shares
+  block:
+    - name: Shorten file system name for VA
+      set_fact:
+         fs: '{{ {"name": deployment_name + "-" + pv.name | regex_replace(fs_override|default(""),""), "size": pv.size } }}'
+         pool: '{{ deployment_name }}'
+
+    - name: "Check if {{ fs.name }} exists"
+      shell: "{{ va_fs_cmd }} list | awk '/{{ fs.name }}/{ print $1 \"\\n\" $3}'"
+      register: fs_list
+
+    - name: Save existing file system details
+      set_fact:
+        fs_name: '{{ fs_list.stdout_lines | first | default("")}}'
+        fs_size: '{{ fs_list.stdout_lines | last | default("") | regex_replace("G","") }}'
+        
+    - name: Convert file system size to GB
+      set_fact:
+        fs_size: '{{ fs_size[:-1]|float*1024 if fs_size[-1] == "T" else fs_size[:-1] }}'
+      when: fs_name != ""
+
+    - name: "Check free space in {{ pool }}"
+      shell: "{{ va_pool_cmd }} free | awk '/{{ pool }}/{ print $2}'"
+      register: pool_space
+
+    - name: Save pool free space in a variable
+      set_fact:
+        pool_space: '{{ pool_space.stdout[:-1]|float*1024 if pool_space.stdout[-1] == "T" else pool_space.stdout[:-1] }}'
+    - debug:
+        msg: "There is {{ pool_space }}G free in the '{{ pool }}' pool"
+
+    - name: "Create new file system for {{ fs.name }}"
+      block:
+        - name: "Check if there is {{ fs.size }}G of free space in {{ pool }}"
+          assert:
+            that: '{{ pool_space | float > fs.size }}'
+            fail_msg: "Insufficient space in {{ pool }}. Free space: {{ pool_space }}G, requested file system size {{ fs.size }}G"
+
+        - name: "Create {{fs.name}} file system"
+          shell: "{{ va_fs_cmd }} create simple fs {{ fs.name }} {{ fs.size|int }}g {{ pool }}"
+          register: create_fs
+      when: fs_name == ""
+    
+    - name: "Expand the {{ fs.name }} file system"
+      block: 
+        - name: Get size increase
+          set_fact:
+            fs_size_increase: '{{ fs.size|float - fs_size|float }}'
+        - block:
+            - debug:
+                msg: "Request to increase size of {{fs.name}} by {{fs_size_increase}}G (Existing size: {{ fs_size |int }}G, New size: {{ fs.size|int }}G )"
+            - name: "Check if there is {{ fs_size_increase }}G of  free space in {{pool}}"
+              assert:
+                that: '{{ pool_space | float > fs_size_increase | float }}'
+                fail_msg: "Insufficient space in {{ pool }}. Free space: {{ pool_space }}G, requested file system size increase of {{ fs_size_increase }}G"
+
+            - name: "Expand {{ fs.name }} to {{fs.size|int}}G"
+              shell: "{{ va_fs_cmd }} growto primary {{ fs.name }} {{ fs.size|int }}g {{ pool }}"
+              register: expand_fs
+          when: fs_size_increase |int > 0
+        - debug:
+            msg: 'No change to {{ fs.name }} as size is not changing'
+          when: fs_size_increase |int == 0
+      when: fs_name == fs.name
+
+    - name: "Check if {{ fs.name }} is exported"
+      shell: "{{ va_nfs_cmd }} show |awk '/{{ fs.name }}/{ print $1}'"
+      register: nfs_share_show
+
+    - name: "Create NFS share for {{ fs.name }}"
+      shell: "{{ va_nfs_cmd }} add {{ va_nfs_share_options }} /vx/{{ fs.name }} {{ nfs_subnet }}/{{ nfs_cidr}}"
+      register: create_nfs_share
+      when: nfs_share_show.stdout != "/vx/" + fs.name
+
+  delegate_to: nas
+  environment: 
+    ANSIBLE_REMOTE_TMP: /tmp

@@ -1,0 +1,122 @@
+---
+- name: Find Path for Virsh Pool where Kickstart VM will be deployed
+  shell: "awk -F '[><]' '/path/{ print $3 }' /etc/libvirt/storage/{{ virsh_storage_pool }}.xml"
+  register: install_dir
+- name: Configure Packer for new images
+  block:
+    - name: Install required packer packages
+      vars:
+        pkgs:
+          - packer
+          - tigervnc
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ pkgs }}"
+    - name: Remove cracklib-packer symbolic link
+      file:
+        path: "/usr/sbin/packer"
+        state: absent
+    - name: Set bridge configuration to allow all
+      lineinfile:
+        path: /etc/qemu-kvm/bridge.conf
+        regexp: 'allow*'
+        line: 'allow all'
+    - name: Update PATH environment variable to include path to qemu
+      lineinfile:
+        path: ~/.bash_profile
+        regexp: '^PATH'
+        line: 'PATH=$PATH:$HOME/bin:/usr/libexec'
+    - name: Add Packer log to environment variable
+      lineinfile:
+        path: ~/.bash_profile
+        state: present
+        insertafter: EOF
+        line: export PACKER_LOG=1
+    - name: "Create {{ packer_build_dir }} packer directory"
+      file:
+        state: directory
+        path:  "{{ packer_build_dir }}"
+        mode: 0755
+    - name: "Copy packer bifrost files to {{ packer_build_dir }} directory"
+      copy:
+        src: '{{ item }}'
+        dest: "{{ packer_build_dir }}"
+      loop:
+        - bm_bifrost.json
+        - bm_bifrost.yml
+        - user-data
+    - name: Build Kickstart Image
+      shell: "source ~/.bash_profile ; cd {{ packer_build_dir }}/; packer build -var 'image_url=http://{{ repo_ip_address }}/{{ repo_folder }}/{{ packer_base_img }}' bm_bifrost.json"
+    - name: Copy new image to {{ install_dir.stdout }} (defined in virsh-pool) directory
+      copy:
+        src: "{{ packer_build_dir }}/output_bm_bifrost/{{ bifrost_img_name }}"
+        dest: "{{ install_dir.stdout }}"
+        remote_src: yes
+    - name: Copy images to Repo Server
+      shell: "sshpass -e scp {{ packer_build_dir }}/output_bm_bifrost/{{ bifrost_img_name }} root@{{ repo_ip_address }}:{{ full_repo_path }}"
+      environment: 
+        SSHPASS: "{{ repo_password }}"
+    - name: "Clean up {{ packer_build_dir }}"
+      file:
+        path: "{{ packer_build_dir }}"
+        state: absent
+  when: ( reuse_ks_image is defined and reuse_ks_image == 'new' )
+
+- name: Install required terraform packages
+  vars:
+    pkgs:
+      - terraform
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ pkgs }}"
+- name: Create a terraform plugin directory if it does not exist
+  file:
+    path: ~/.local/share/terraform/plugins/registry.terraform.io/dmacvicar/libvirt/0.6.2/linux_amd64
+    state: directory
+    mode: '0744'
+- name: Unarchive terraform libvirt plugin
+  unarchive:
+    src: "https://github.com/dmacvicar/terraform-provider-libvirt/releases/download/v0.6.2/terraform-provider-libvirt-0.6.2+git.1585292411.8cbe9ad0.Fedora_28.x86_64.tar.gz"
+    dest: "~/.local/share/terraform/plugins/registry.terraform.io/dmacvicar/libvirt/0.6.2/linux_amd64"
+    remote_src: yes
+- name: "Create terraform subdirectory"
+  file:
+    state: directory
+    path:  "{{ install_dir.stdout }}/{{ deployment_name }}/terraform"
+    mode: 0755
+- name: Copy Bifrost VM terraform files from templates to Physical Host
+  template:
+    src: '{{ tf_template }}'
+    dest: "{{ install_dir.stdout }}/{{ deployment_name }}/terraform/{{ tf_template | regex_replace('.j2','') }}"
+  loop:
+    - bifrost.tf.j2
+    - bifrost_net_config.j2
+    - bifrost_net.tfvars.j2
+    - bifrost_network.tf.j2
+  loop_control:
+    loop_var: tf_template
+    label: "{{ tf_template | regex_replace('.j2','') }}"
+- name: "Check if {{ install_dir.stdout }}/{{ bifrost_img_name }} already exists"
+  stat:
+    path: "{{ install_dir.stdout }}/{{ bifrost_img_name }}"
+  register: bifrost_img_stat
+- name: Download Bifrost Image from Repo Server
+  get_url:
+    url: "http://{{ repo_ip_address }}/{{ repo_folder }}/{{ bifrost_img_name }}"
+    dest: "{{ install_dir.stdout }}"
+  when: ( reuse_ks_image is defined and reuse_ks_image == 'reuse' and not bifrost_img_stat.stat.exists )
+- name: Deploy Bifrost VM from Images
+  terraform:
+    project_path: "{{ install_dir.stdout }}/{{ deployment_name }}/terraform"
+    state: present
+    force_init: true
+    variables_file: "{{ install_dir.stdout }}/{{ deployment_name }}/terraform/bifrost_net.tfvars"
+- name: Wait for Bifrost VM to start
+  wait_for:
+    port: 22
+    host: "{{ bifrost_shortname }}"
+    search_regex: OpenSSH
+    delay: 5
+    timeout: 180

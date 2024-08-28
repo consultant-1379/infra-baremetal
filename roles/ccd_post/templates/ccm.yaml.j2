@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: ews-ccm
+  name: ews-ccm
+  namespace: kube-system
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: ews-ccm
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      annotations:
+        scheduler.alpha.kubernetes.io/critical-pod: ""
+        scheduler.alpha.kubernetes.io/tolerations: '[{"key":"CriticalAddonsOnly", "operator":"Exists"}]'
+      labels:
+        app: ews-ccm
+    spec:
+      serviceAccountName: ews-ccm
+      containers:
+      - name: ews-ccm
+        image: armdocker.rnd.ericsson.se/proj-ews/k8s/ews-ccm:v0.0.7
+        imagePullPolicy: Always
+        env:
+        - name: EWSCCM_NAMESPACE
+          value: kube-system
+        - name: EWSCCM_CONFIG_MAP
+          value: ewsccm-cm
+        - name: EWSCCM_SERVICE_POOL_IP4
+          value: {{ worker_vips | join(",") }}
+        - name: EWSCCM_CONFIG_TYPE
+          value: DEFAULT
+        volumeMounts:
+        - name: certs
+          mountPath: /etc/ssl/certs
+        resources:
+          requests:
+            cpu: 200m
+      volumes:
+      - name: certs
+        hostPath:
+          path: /etc/ssl/certs
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ewsccm-cm
+  namespace: kube-system
+data:
+  
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ews-ccm
+  namespace: kube-system
+  
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: ews-ccm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: ews-ccm
+  namespace: kube-system

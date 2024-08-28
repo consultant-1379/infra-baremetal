@@ -1,0 +1,99 @@
+---
+- name: Restart systemd-sysctl service
+  systemd:
+    name: systemd-sysctl
+    state: restarted
+  become: yes
+
+- name: Copy ccd_inventory.yml to /var/tmp
+  copy:
+    src: "/root/ccd_inventory.yml"
+    dest: "/var/tmp/upgrade_ccd_inventory.yml"
+    remote_src: yes
+
+- name: Set node_type to racks or blades
+  set_fact:
+    node_type: '{{ "racks" if all_racks else "blades" }}'
+
+- name: Remove ungrouped from /var/tmp/upgrade_ccd_inventory.yml
+  replace:
+    path: '/var/tmp/upgrade_ccd_inventory.yml'
+    after: 'ansible_ssh_common_args: " -o StrictHostKeyChecking=no "'
+    before: '{{ node_type }}'
+    regexp: "^(.+)$"
+    replace: ''
+
+- name: Create directory for CCD SW
+  file:
+    path: /var/tmp/ccd
+    state: directory
+    mode: 0755
+
+- name: Extract CCD SW located on repo server
+  unarchive:
+    src: "http://{{ repo_ip_address }}/{{ repo_folder }}/ccd_latest_sw.tgz"
+    dest: /var/tmp/ccd/
+    remote_src: yes
+  tags:
+    - download_ccd 
+
+- name: Find CCD directory
+  find:
+    path: /var/
+    file_type: directory
+    use_regex: yes
+    recurse: yes
+    patterns:
+      - '^eccd'
+  register: find_ccd_install_dir
+
+- name: Save path to CCD ansible/erikube directory
+  set_fact:
+    eccd_install_dir: "{{ find_ccd_install_dir.files | map(attribute='path') | first }}/ansible/erikube"
+
+# - name: Copy drain-first.patch
+#   copy:
+#     src: drain-first.patch
+#     dest: '/tmp/'
+
+# - name: Patch drain-first.yml
+#   shell: 'patch {{ eccd_install_dir }}/roles/host-prepare/tasks/drain-first.yml /tmp/drain-first.patch'
+
+- name: Upgrade CCD on BM Deployment
+  shell: "export ANSIBLE_LOG_PATH=$(date '+%Y%m%d%H%M%S')-ccd_upgrade_ansible.log; ansible-playbook -i /var/tmp/upgrade_ccd_inventory.yml -e \"prepare_host=true\"
+           -e \"kubectl_drain_timeout_args='--grace-period=60 --timeout=15m'\" -e \"helm_install_timeout=1200s\" -e \"version_check_retry_delay=10\" upgrade.yml"
+  args:
+    chdir: '{{ eccd_install_dir }}'
+
+- name: Configure container runtime for Unity & PowerFlex CSI driver
+  block:
+    - name: Check if containerd is present
+      stat:
+        path: /usr/lib/systemd/system/containerd.service
+      register: containerd_stat
+    - name: Set container runtime variable
+      set_fact:
+        runtime: '{{ "containerd" if containerd_stat.stat.exists else "docker" }}'
+    - name: "Set MountFlags=shared in {{ runtime }} systemd configuration"
+      ini_file:
+        path: "/usr/lib/systemd/system/{{ runtime }}.service"
+        section: Service
+        option: MountFlags
+        value: shared
+      register: runtime_config
+
+    - name: "Reload systemd and restart {{ runtime }}"
+      systemd:
+        name: "{{ runtime }}"
+        state: restarted
+        daemon_reload: yes
+      when: runtime_config.changed
+
+  when: unity_host is defined and unity_host != "" or powerflex_host is defined and powerflex_host != ""
+
+
+- name: Delete temporary inventory /var/tmp/ccd_inventory.yml
+  file:
+    path: /var/tmp/upgrade_ccd_inventory.yml
+    state: absent    
+

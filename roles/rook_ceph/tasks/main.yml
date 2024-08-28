@@ -1,0 +1,30 @@
+---
+  # Should be run on host with kubectl access to _cluster
+  # Requires storage_osd_nodes and storage_mon_nodes to be passed in
+- name: Add labels and taints
+  include_tasks: labels.yml
+  vars:
+    state: present
+  tags:
+    - create
+
+- name: Install Rook with Ceph
+  include_tasks: install.yml
+  tags:
+    - create
+
+
+# - name: Remove labels and taints
+#   include_tasks: labels.yml
+#   vars:
+#     state: absent
+#   tags:
+#     - cleanup
+#     - never
+
+
+# - name: Uninstall Rook with Ceph
+#   include_tasks: uninstall.yml
+#   tags:
+#     - cleanup
+#     - never

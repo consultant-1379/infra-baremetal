@@ -1,0 +1,315 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+<?xml version="1.0"?>
+<!DOCTYPE profile>
+<profile xmlns="http://www.suse.com/1.0/yast2ns" xmlns:config="http://www.suse.com/1.0/configns">
+  <bootloader>
+    <global>
+      <append>audit=1</append>
+    </global>
+  </bootloader>
+  <general>
+    <mode>
+      <confirm config:type="boolean">false</confirm>
+    </mode>
+    <storage>
+     {% if powerflex_host is defined or is_ceph is defined %}
+     <start_multipath config:type="boolean">false</start_multipath>
+     {% else %}
+     <start_multipath config:type="boolean">true</start_multipath>
+     {% endif %}
+    </storage>
+  </general>
+  <networking>
+    <keep_install_network config:type="boolean">true</keep_install_network>
+  </networking>
+  {% if powerflex_host is not defined %}
+  {# if not powerflex and is_ceph - bmccd5 #}
+  {% if is_ceph is defined %}
+  <partitioning config:type="list">
+  <drive>
+      <skip_list config:type="list">
+      <listentry>
+        <!-- skip devices that use the mpt3sas driver for OSD disks -->
+        <skip_key>driver</skip_key>
+        <skip_value>mpt3sas</skip_value>
+      </listentry>
+    </skip_list>
+  <initialize config:type="boolean">true</initialize>
+      <use>all</use>
+        <partitions config:type="list">
+            <partition>
+                <create config:type="boolean">true</create>
+                <format config:type="boolean">true</format>
+                <mount>/</mount>
+                <size>max</size>
+                <filesystem config:type="symbol">xfs</filesystem>
+            </partition>
+        </partitions>
+    </drive>
+  </partitioning>
+  {# if not is_ceph  - boot from LUN #}
+  {% else %}
+  <partitioning config:type="list">
+    <drive>
+      <device>/dev/disk/by-id/wwn-0x{{server_luns[server.split("-")|first]}}</device>
+      <initialize config:type="boolean">true</initialize>
+      <use>all</use>
+        <partitions config:type="list">
+            <partition>
+                <create config:type="boolean">true</create>
+                <format config:type="boolean">true</format>
+                <mount>/</mount>
+                <size>max</size>
+                <filesystem config:type="symbol">xfs</filesystem>
+            </partition>
+        </partitions>
+    </drive>
+  </partitioning>
+  {# endif is_ceph #}
+  {% endif %}
+  {# this else matches if powerflex_host....#}
+  {% else %}
+  {# powerflex with servers that have SmartArray #}
+  {% if has_smartarray %}
+  <partitioning config:type="list">
+    <drive>
+      <device>/dev/sda</device>
+      <initialize config:type="boolean">true</initialize>
+      <use>all</use>
+        <partitions config:type="list">
+            <partition>
+                <create config:type="boolean">true</create>
+                <format config:type="boolean">true</format>
+                <mount>/</mount>
+                <size>max</size>
+                <filesystem config:type="symbol">xfs</filesystem>
+            </partition>
+        </partitions>
+    </drive>
+  </partitioning>
+  {# powerflex with servers that don't have SmartArray - i.e. use SW RAID #}
+  {% else %}
+  <partitioning config:type="list">
+    <drive>
+      <device>/dev/md0</device>
+      <disklabel>gpt</disklabel>
+      <enable_snapshots config:type="boolean">false</enable_snapshots>
+      <initialize config:type="boolean">true</initialize>
+      <partitions config:type="list">
+        <partition>
+          <create config:type="boolean">true</create>
+          <filesystem config:type="symbol">vfat</filesystem>
+          <format config:type="boolean">true</format>
+          <mount>/boot/efi</mount>
+          <mountby config:type="symbol">uuid</mountby>
+          <partition_id config:type="integer">259</partition_id>
+          <partition_nr config:type="integer">1</partition_nr>
+          <resize config:type="boolean">false</resize>
+          <size>536870912</size>
+        </partition>
+        <partition>
+          <create config:type="boolean">true</create>
+          <filesystem config:type="symbol">xfs</filesystem>
+          <format config:type="boolean">true</format>
+          <mount>/</mount>
+          <mountby config:type="symbol">uuid</mountby>
+          <partition_id config:type="integer">131</partition_id>
+          <partition_nr config:type="integer">2</partition_nr>
+          <resize config:type="boolean">false</resize>
+          <size>959524945408</size>
+        </partition>
+      </partitions>
+      <raid_options>
+        <chunk_size>0B</chunk_size>
+        <device_order config:type="list">
+          <device>/dev/sda</device>
+          <device>/dev/sdb</device>
+        </device_order>
+        <parity_algorithm>default</parity_algorithm>
+        <raid_type>raid1</raid_type>
+      </raid_options>
+      <type config:type="symbol">CT_MD</type>
+    </drive>
+    <drive>
+      <device>/dev/sda</device>
+      <disklabel>none</disklabel>
+      <enable_snapshots config:type="boolean">false</enable_snapshots>
+      <initialize config:type="boolean">true</initialize>
+      <partitions config:type="list">
+        <partition>
+          <create config:type="boolean">false</create>
+          <format config:type="boolean">false</format>
+          <raid_name>/dev/md0</raid_name>
+          <resize config:type="boolean">false</resize>
+        </partition>
+      </partitions>
+      <type config:type="symbol">CT_DISK</type>
+      <use>all</use>
+    </drive>
+    <drive>
+      <device>/dev/sdb</device>
+      <disklabel>none</disklabel>
+      <enable_snapshots config:type="boolean">false</enable_snapshots>
+      <initialize config:type="boolean">true</initialize>
+      <partitions config:type="list">
+        <partition>
+          <create config:type="boolean">false</create>
+          <format config:type="boolean">false</format>
+          <raid_name>/dev/md0</raid_name>
+          <resize config:type="boolean">false</resize>
+        </partition>
+      </partitions>
+      <type config:type="symbol">CT_DISK</type>
+      <use>all</use>
+    </drive>
+  </partitioning>
+  {% endif %}
+  {% endif %}
+  <timezone>
+    <hwclock>UTC</hwclock>
+    <timezone>Europe/Dublin</timezone>
+  </timezone>
+  <software>
+    <products config:type="list">
+      <product>SLES</product>
+    </products>
+    <install_recommended config:type="boolean">true</install_recommended>
+    <patterns config:type="list">
+      <pattern>base</pattern>
+    </patterns>
+    <packages config:type="list">
+      <package>socat</package>
+      <package>ceph-common</package>
+      <package>nfs-client</package>
+      <package>ebtables</package>
+      <package>ethtool</package>
+      <package>openssl</package>
+      <package>apache2-utils</package>
+      <package>conntrack-tools</package>
+      <package>openssh</package>
+      <package>multipath-tools</package>
+      <package>sudo</package>
+      <package>vim</package>
+      <package>iputils</package>
+      <package>less</package>
+      <package>biosdevname</package>
+      <package>kexec-tools</package>
+      <package>makedumpfile</package>
+      <package>kdump</package>
+    </packages>
+  </software>
+ <add-on>
+    <add_on_products config:type="list">
+      {% if sp_version == "SP4" %}
+      <listentry>
+        <product>Product-SLES</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP4-GMC-202205/SLE-15-SP4-Full/SLE-15-SP4-Full-x86_64-GMC-202205-Media1/Product-SLES/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      <listentry>
+        <product>Module-Basesystem</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP4-GMC-202205/SLE-15-SP4-Full/SLE-15-SP4-Full-x86_64-GMC-202205-Media1/Module-Basesystem/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      <listentry>
+        <product>Module-Server-Applications</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP4-GMC-202205/SLE-15-SP4-Full/SLE-15-SP4-Full-x86_64-GMC-202205-Media1/Module-Server-Applications/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      {% elif sp_version == "SP3" %}
+      <listentry>
+        <product>Product-SLES</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP3-GMC/SLE-15-SP3-Full/SLE-15-SP3-Full-x86_64-GMC-Media1/Product-SLES/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      <listentry>
+        <product>Module-Basesystem</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP3-GMC/SLE-15-SP3-Full/SLE-15-SP3-Full-x86_64-GMC-Media1/Module-Basesystem/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      <listentry>
+        <product>Module-Server-Applications</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP3-GMC/SLE-15-SP3-Full/SLE-15-SP3-Full-x86_64-GMC-Media1/Module-Server-Applications/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      {% else %}
+      <listentry>
+        <product>Product-SLES</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP2-GMC/SLE-15-SP2-Full/SLE-15-SP2-Full-x86_64-GMC-Media1/Product-SLES/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      <listentry>
+        <product>Module-Basesystem</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP2-GMC/SLE-15-SP2-Full/SLE-15-SP2-Full-x86_64-GMC-Media1/Module-Basesystem/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      <listentry>
+        <product>Module-Server-Applications</product>
+        <media_url>https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/ISO/SLE-15-SP2-GMC/SLE-15-SP2-Full/SLE-15-SP2-Full-x86_64-GMC-Media1/Module-Server-Applications/</media_url>
+        <product_dir>/</product_dir>
+      </listentry>
+      {% endif %}
+    </add_on_products>
+  </add-on>
+  <firewall>
+    <enable_firewall config:type="boolean">true</enable_firewall>
+  </firewall>
+  <services-manager>
+    <default_target>multi-user</default_target>
+    <services>
+      <enable config:type="list">
+      <service>sshd</service>
+      <service>kdump</service>
+      </enable>
+    </services>
+  </services-manager>
+  <users config:type="list">
+    <user>
+      <username>root</username>
+      <user_password>$6$RlnJM4rtJdm1HUom$Tvc9M24tY7jtCJMftfLtKgnNAaBoAvF3X/3CNhHFvls4vwXnaBfWmp49TUdmi/umQDZuearQ0lRlF1XkyMqhZ1</user_password>
+      <encrypted config:type="boolean">true</encrypted>
+      <authorized_keys config:type="list">
+        <listentry>{{ rsa_pub }}</listentry>
+        <listentry>{{ ansible_rsa_pub }}</listentry>
+    </authorized_keys>
+    </user>
+    <user>
+      <username>bmadm</username>
+      <user_password>$6$RlnJM4rtJdm1HUom$Tvc9M24tY7jtCJMftfLtKgnNAaBoAvF3X/3CNhHFvls4vwXnaBfWmp49TUdmi/umQDZuearQ0lRlF1XkyMqhZ1</user_password>
+      <encrypted config:type="boolean">true</encrypted>
+      <authorized_keys config:type="list">
+        <listentry>{{rsa_pub}}</listentry>
+        <listentry>{{ ansible_rsa_pub }}</listentry>
+      </authorized_keys>
+    </user>
+  </users>
+  <scripts>
+    <init-scripts config:type="list">
+      <script>
+        <source>
+        <![CDATA[
+           echo "Adding bmadm to /etc/sudoers"
+           echo 'bmadm ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers
+        ]]>
+        </source>
+      </script>
+    </init-scripts>
+    {% if not has_smartarray %}
+    <pre-scripts config:type="list">
+    <script>
+      <source>
+        <![CDATA[
+           echo "Wiping disks to remove software raid"
+           /sbin/wipefs -af /dev/sda
+           /sbin/wipefs -af /dev/sdb
+        ]]>
+        </source>
+    </script>
+  </pre-scripts>
+    {% endif %}
+  </scripts>
+  <kdump>
+    <add_crash_kernel config:type="boolean">true</add_crash_kernel>
+    <crash_kernel>512M</crash_kernel>
+  </kdump>
+</profile>

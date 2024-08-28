@@ -1,0 +1,88 @@
+- name: Set project name
+  set_fact:
+    project_name: "{{ lookup('file',config_file) | from_yaml | json_query('clouds.devstack.auth.project_name') }}"
+
+- name: Set variables for deployment_type
+  set_fact:
+    flavor: '{{ clients[deployment_type].flavor }}'
+    flavor_properties: '{{ clients[deployment_type]["project"][project_name].properties | default({}) }}'
+    baseimage: '{{ clients[deployment_type].image.name }}'
+    baseimageurl: '{{ clients[deployment_type].image.url }}'
+    network: '{{ clients[deployment_type].network }}'
+    floating_network: '{{ clients[deployment_type]["project"][project_name].floating_network }}'
+    builder_floating_ip: '{{ clients[deployment_type]["project"][project_name].builder_floating_ip }}'
+    ssh_key: "/tmp/ostk_ccd_client_ssh_key"
+    public_keyfile: "{{ role_path }}/files/ostk_ccd_client_ssh_key.pub"
+    output_image: "ccd_client_img"
+    security_group: "ostk_ccd_client_sg"
+    user: 'ubuntu'
+  
+- name: Create resolved.conf
+  template: 
+    src: resolved.conf.j2
+    dest: /tmp/resolved.conf
+
+- name: Create chrony.conf
+  copy:
+    src: chrony.conf
+    dest: /tmp/chrony.conf
+
+- include_tasks: createvm.yml
+  vars:
+    keypair_name: ccd_client_keypair
+    deployment_name: 'ccd_client'
+
+- name: Get list of ccd_client VMs
+  os_server_info:
+    server: '{{ vm_name }}'
+  register: clientvm_info
+
+- name: Check that only 1 VM in the list of ccd_client VMs
+  assert:
+    that: clientvm_info.openstack_servers | length ==1 
+    fail_msg: 'There is more than one VM in the list of servers {{ clientvm_info.openstack_servers | map(attribute="name") | list }}'
+
+- name: Set floating_ip variable
+  set_fact: 
+    floating_ip: '{{ clientvm_info.openstack_servers | map(attribute="accessIPv4") | first }}'
+
+- name: Set correct mode on SSH key
+  copy:
+    src: ostk_ccd_client_ssh_key
+    dest: '{{ ssh_key }}'
+    mode: 0600
+
+- name: "Add {{ vm_name }}-client VM to in-memory inventory"
+  add_host:
+    hostname: '{{ vm_name }}'
+    ansible_host: '{{ floating_ip }}'
+    ansible_user: '{{ user }}'
+    ansible_ssh_private_key_file: '{{ ssh_key }}'
+    ansible_ssh_common_args: "-oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
+
+- name: Wait for Client VM to be accessible by SSH
+  wait_for:
+    port: 22
+    host: '{{ floating_ips[vm_name]["floating_ip"]}}'
+    search_regex: OpenSSH
+    delay: 5
+    timeout: 180
+
+- name: Disable cloudinit network configuration
+  copy:
+    content: "network: {config: disabled}\n" 
+    dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+    mode: 0644
+    group: root
+    owner: root
+  delegate_to: '{{ vm_name }}'
+  become: yes
+
+- name: Clean up files from /tmp
+  file:
+    path: '{{ item }}'
+    state: absent
+  loop:
+    - /tmp/ostk_ccd_client_ssh_key
+    - /tmp/resolved.conf
+    - /tmp/chrony.conf

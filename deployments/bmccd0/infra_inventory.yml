@@ -1,0 +1,13 @@
+infra:
+  hosts:
+    phost:
+      ansible_host: 10.32.132.136
+      ansible_user: root
+    bifrost:
+      ansible_host: 10.232.238.197
+      ansible_user: root
+    kickstart:
+      ansible_host: 10.232.238.199
+      ansible_user: root
+  vars:
+    ansible_ssh_common_args: " -o StrictHostKeyChecking=no "

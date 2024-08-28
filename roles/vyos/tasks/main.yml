@@ -1,0 +1,254 @@
+- name: Setup
+  block:
+    - name: "Get variables for pod {{ pod }}"
+      set_fact:
+        infra_cidr_prefix: '/{{ pods[pod]["infra_cidr_prefix"] }}'
+        infra_gateway: '{{ pods[pod]["infra_gateway"] }}'
+        vcenter_hostname: '{{ pods[pod]["vcenter_hostname"] }}'
+        vyos_portgroups: '{{ pods[pod]["vyos_portgroups"] }}'
+
+    - name: Gather information about all datacenters
+      community.vmware.vmware_datacenter_info:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        validate_certs: no
+      register: datacenter_info
+
+    - name: Get datacenter name
+      set_fact:
+        datacenter: '{{ datacenter_info.datacenter_info[0].name }}'
+
+    - name: Get Cluster info
+      community.vmware.vmware_cluster_info:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        datacenter: '{{ datacenter }}'
+        validate_certs: no
+      register: cluster_info
+
+    - name: Get ESXi hosts
+      set_fact:
+        esxi_hosts: '{{ (cluster_info.clusters | dict2items | first).value.hosts | map(attribute="name") | list }}'
+        cluster_name: '{{ (cluster_info.clusters | dict2items | first).key }}'
+
+    - name: Check if there's a DVS
+      community.vmware.vmware_dvswitch_info:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        validate_certs: no
+      register: dvswitch_info
+    - name: DVS specific tasks
+      block:
+        - name: Get info about DVS Portgroups
+          community.vmware.vmware_dvs_portgroup_info:
+            hostname: '{{ vcenter_hostname }}'
+            username: "{{ vcenter_username }}"
+            password: "{{ vcenter_password }}"
+            datacenter: "{{ datacenter }}"
+            dvswitch: '{{ dvs_switch }}'
+            show_mac_learning: no
+            show_network_policy: no
+            show_port_policy: no
+            show_teaming_policy: no
+            show_uplinks: no
+            show_vlan_info: no
+            validate_certs: no
+          register: dvpg_info
+
+        - name: Create DVS Portgroups
+          community.vmware.vmware_dvs_portgroup:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            portgroup_name: '{{ pg.name }}'
+            switch_name: '{{ dvs_switch }}'
+            vlan_id: '{{ pg.vlan }}'
+            num_ports: 64
+            port_binding: ephemeral
+            teaming_policy:
+              active_uplinks:
+                - lag1
+            state: present
+            validate_certs: no
+            vlan_trunk: '{{ true if pg.vlan|string == "0-4094" else false }}'
+          loop: '{{ vyos_portgroups }}'
+          loop_control:
+            loop_var: pg
+            label: '{{ pg.name }}'
+          when: pg.name not in dvpg_info.dvs_portgroup_info[dvs_switch] | map(attribute="portgroup_name") |list
+
+      when: dvswitch_info.distributed_virtual_switches |length >0
+
+    - name: VSS specific tasks
+      block:
+        - name: Get VSS portgroups for all ESXi hosts
+          community.vmware.vmware_portgroup_info:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            cluster_name: '{{ cluster_name }}'
+            validate_certs: no
+          register: vss_pg_info
+
+        - name: Add portgroups to VSS on each ESXi host
+          community.vmware.vmware_portgroup:
+            hostname: "{{ vcenter_hostname }}"
+            username: "{{ vcenter_username }}"
+            password: "{{ vcenter_password }}"
+            hosts: "{{ pg[1] }}"
+            switch: "vSwitch0"
+            portgroup: "{{ pg[0].name }}"
+            vlan_id: "{{ pg[0].vlan }}"
+            validate_certs: no
+          loop: '{{ vyos_portgroups | unique | product(esxi_hosts) |list }}'
+          loop_control:
+            loop_var: pg
+            label: '{{ pg[0].name }}'
+          when: pg[0].name not in  vss_pg_info.hosts_portgroup_info[pg[1]]| map(attribute="portgroup")|list
+
+      when: dvswitch_info.distributed_virtual_switches |length == 0
+
+    - name: Create networks variable
+      set_fact:
+        networks: '{{ networks | default([]) + [ { "portgroup": pg.name, "vlan": pg.vlan ,"start_connected": True if "infra" in pg.name else False,"type":"static"}] }}'
+      loop: '{{ vyos_portgroups }}'
+      loop_control:
+        loop_var: pg
+        label: '{{ pg.name }}'
+
+    - name: Gather list of datastores
+      community.vmware.vmware_datastore_info:
+        hostname: '{{ item }}'
+        username: root
+        password: '{{ vcenter_password }}'
+        validate_certs: no
+      register: datastore_info
+      loop: '{{ esxi_hosts }}'
+
+    - name: Create vm_mappings VM -> (VyOS IP,ESXi host,datastore)
+      set_fact:
+        vm_mappings: '{{ vm_mappings | default([])  + [{ "name": vm,"vyos_ip": lookup("dig", vm,"@" + dns_servers| join(",")) ,
+                      "esxi_host": esxi_hosts[i], "datastore": d }]  }}'
+      vars:
+        vm: '{{ vyos_vm_list[i] }}'
+      loop: '{{ datastore_info.results | map(attribute="datastores") | flatten |  map(attribute="name") | list }}'
+      loop_control:
+        loop_var: d
+        index_var: i
+    - name: Create VM -> Portgroup mappings
+      set_fact:
+        vm_network_mappings: '{{ vm_network_mappings|default([]) + [ item|combine(recursive=True) ] }}'
+      loop: '{{ networks | product(vm_mappings) | list}}'
+
+- name: Create VyOS VM
+  block:
+    - name: "Create VM folder for {{ cloud }}"
+      community.vmware.vcenter_folder:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        datacenter_name: "{{ datacenter }}"
+        folder_name: "{{ cloud }}"
+        parent_folder: "Discovered virtual machine"
+        state: present
+        validate_certs: no
+
+    - name: Create a VyOS VM from a template
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        name: '{{ vm.name }}'
+        folder: 'Discovered virtual machine/{{cloud}}'
+        datacenter: "{{ datacenter }}"
+        esxi_hostname: "{{ vm.esxi_host }}"
+        datastore: "{{ vm.datastore }}"
+        state: poweredoff
+        #template: vyos_1.4
+        template: vyos_1.4_20220829
+        disk:
+        - size_gb: 2
+          type: thick
+          datastore: datastore1
+        hardware:
+          memory_mb: 6144
+          num_cpus: 4
+          num_cpu_cores_per_socket: 1
+          scsi: paravirtual
+          memory_reservation_lock: True
+          hotadd_cpu: True
+          hotremove_cpu: True
+          hotadd_memory: True
+          version: '19' # Hardware version of virtual machine
+          boot_firmware: "bios"
+        wait_for_ip_address: false
+        validate_certs: no
+      loop: '{{ vm_mappings }}'
+      loop_control:
+        loop_var: vm
+        label: '{{ vm.name }}'
+
+
+    - name: Add networks to guest
+      community.vmware.vmware_guest_network:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ datacenter }}"
+        esxi_hostname: "{{ vm.esxi_host }}"
+        name: "{{ vm.name }}"
+        state: present
+        network_name: "{{ vm.portgroup }}"
+        force: yes
+        connected: "{{ vm.start_connected }}"
+        validate_certs: no
+      loop: "{{ vm_network_mappings }}"
+      loop_control:
+        loop_var: vm
+        index_var: i
+        label: "{{ vm.name + ': ' + vm.portgroup }}"
+
+    - name: Power on VyOS VM
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        name: '{{ vm.name }}'
+        folder: 'Discovered virtual machine'
+        datacenter: "{{ datacenter }}"
+        esxi_hostname: "{{ vm.esxi_host }}"
+        datastore: "{{ vm.datastore }}"
+        state: poweredon
+        validate_certs: no
+      loop: '{{ vm_mappings }}'
+      loop_control:
+        loop_var: vm
+        label: '{{ vm.name }}'
+
+    - name: Allow VM time to boot
+      pause:
+        seconds: 30
+      tags:
+       - always
+
+    - name: "Configure SSH access"
+      community.vmware.vmware_vm_shell:
+        hostname: "{{ vcenter_hostname }}"
+        username: "{{ vcenter_username }}"
+        password: "{{ vcenter_password }}"
+        datacenter: "{{ datacenter }}"
+        folder: 'Discovered virtual machine'
+        vm_id: '{{ vm.name }}'
+        vm_username: 'root'
+        vm_password: '{{ vyos_root_password }}'
+        vm_shell: /bin/bash
+        vm_shell_args: '-c "ip addr add {{ vm.vyos_ip + infra_cidr_prefix }} dev eth0;ip route add default via {{ infra_gateway }};ip a s; ip r s;"'
+        validate_certs: no
+      ignore_errors: True
+      loop: '{{ vm_mappings }}'
+      loop_control:
+        loop_var: vm
+        label: '{{ vm.name }}'

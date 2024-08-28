@@ -1,0 +1,23 @@
+#!/bin/bash
+
+abort(){
+    error "${1}"
+    info "Exiting..."
+    exit 1
+}
+log(){
+    local severity=$1
+    local msg=$2
+    echo "$(date -Iseconds) ${severity}: ${msg}"
+}
+
+info(){
+    log "INFO: $1"
+}
+
+error(){
+    log "ERROR: $1"
+}
+warn(){
+    log "WARN: $1"
+}

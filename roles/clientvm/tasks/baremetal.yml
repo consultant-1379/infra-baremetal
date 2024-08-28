@@ -1,0 +1,183 @@
+- name: Set project name
+  set_fact:
+    project_name: "{{ lookup('file',config_file) | from_yaml | json_query('clouds.devstack.auth.project_name') }}"
+
+- name: Set variables for deployment_type
+  set_fact:
+    flavor: '{{ clients[deployment_type].flavor }}'
+    flavor_properties: '{{ clients[deployment_type]["project"][project_name].properties | default({}) }}'
+    baseimage: '{{ clients[deployment_type].image.name }}'
+    baseimageurl: '{{ clients[deployment_type].image.url }}'
+    network: '{{ clients[deployment_type].network }}'
+    floating_network: '{{ clients[deployment_type]["project"][project_name].floating_network }}'
+    builder_floating_ip: '{{ clients[deployment_type]["project"][project_name].builder_floating_ip }}'
+    deployment_files: '{{ clients[deployment_type].deployment_files }}'
+    ssh_key: '/tmp/{{ deployment_name }}_ssh_key'
+    public_keyfile: 'deployments/{{ deployment_name }}/{{ deployment_name }}_ssh_key.pub'
+    output_image: 'bmccd_client_img'
+    security_group: 'ccd_client_security_group'
+    user: 'ubuntu'
+
+- name: Create resolved.conf
+  template: 
+    src: resolved.conf.j2
+    dest: /tmp/resolved.conf
+
+- name: Create chrony.conf
+  copy:
+    src: chrony.conf
+    dest: /tmp/chrony.conf
+
+- name: Set correct permissions on private key
+  copy:
+    src: 'deployments/{{ deployment_name }}/{{ deployment_name }}_ssh_key'
+    dest: '{{ ssh_key }}'
+    mode: 0600
+
+- name: "Add {{ deployment_name }}-client VM to in-memory inventory"
+  add_host:
+    hostname: '{{ deployment_name }}-client'
+    ansible_host: '{{ floating_ips[deployment_name]["floating_ip"]}}'
+    ansible_user: '{{ user }}'
+    ansible_ssh_private_key_file: '{{ ssh_key }}'
+    ansible_ssh_common_args: "-oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null"
+
+- name: "Download {{ deployment_name }} kubernetes config file from MinIO bucket"
+  aws_s3:
+    aws_access_key: "{{ minio_access_key }}"
+    aws_secret_key: "{{ minio_secret_key }}"
+    s3_url: "{{ minio_url }}"
+    encrypt: no
+    bucket: de-cni
+    object: "/ccd/{{ deployment_name }}/{{ deployment_name }}.{{ item }}"
+    dest: "/tmp/{{ deployment_name }}.{{ item }}"
+    mode: get
+    ignore_nonexistent_bucket: True
+  run_once: yes
+  loop: '{{ deployment_files }}'
+
+- include_tasks: createvm.yml
+  vars:
+    keypair_name: '{{ deployment_name }}-keypair'
+
+- name: Wait for Client VM to be accessible by SSH
+  wait_for:
+    port: 22
+    host: '{{ floating_ips[deployment_name]["floating_ip"]}}'
+    search_regex: OpenSSH
+    delay: 5
+    timeout: 180
+
+- name: 'Run {{ deployment_name }}-client VM postinstall tasks'
+  block:
+    - name: Disable cloudinit network configuration
+      copy:
+        content: "network: {config: disabled}\n" 
+        dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+        mode: 0644
+        group: root
+        owner: root
+
+    - name: "Create certs.d/registry.{{ deployment_name }}.athtem.eei.ericsson.se/ directory on client vm"
+      file:
+        path: "/etc/docker/certs.d/registry.{{ deployment_name }}.athtem.eei.ericsson.se/"
+        state: directory
+  delegate_to: '{{ deployment_name }}-client'
+  become: yes
+  run_once: yes
+
+- name: Download container registry CA cert
+  shell: "openssl s_client -showcerts  -servername  registry.{{ deployment_name }}.athtem.eei.ericsson.se -connect \
+          registry.{{ deployment_name }}.athtem.eei.ericsson.se:443 </dev/null |& sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p'"
+  args:
+    executable: /bin/bash
+  register: cert_output
+
+- name: Kickstart tasks
+  block:
+    - name: Find CCD directory
+      find:
+        path: /var/
+        file_type: directory
+        use_regex: yes
+        recurse: yes
+        patterns:
+          - '^eccd'
+      register: find_ccd_install_dir 
+
+    - name: Retrieve Helm & kubectl binaries from kickstart
+      fetch:
+        src: '{{find_ccd_install_dir.files | map(attribute="path") | first }}/components/{{ item }}'
+        dest: /tmp/
+        flat: yes
+      loop:
+        - helmv3/artifacts/helm
+        - kubernetes/artifacts/kubectl
+  delegate_to: kickstart
+
+- name: "Rename /tmp/{{ deployment_name }}.admin.conf to /tmp/config"
+  copy: 
+    src: "/tmp/{{ deployment_name }}.admin.conf"
+    dest: /tmp/config
+
+- name: "Copy files from AWX to {{ deployment_name }}-client vm"
+  block:
+    - name: Copy Helm & kubectl binaries to client vm
+      copy:
+        src: '{{ item }}'
+        dest: /usr/local/bin/
+        mode: 0755
+      loop:
+        - /tmp/helm
+        - /tmp/kubectl
+
+    - name: Copy KUBECONFIG file
+      copy:
+        src: /tmp/config
+        dest: '/home/{{ user_account }}/.kube/'
+        owner: '{{ user_account }}'
+        group: '{{ user_account }}'
+        mode: 0600
+      loop:
+        - ubuntu
+        - cenmbuild
+        - bmadm
+      loop_control:
+        loop_var: user_account
+        label: "{{ user_account }}"
+        
+    - name: Write container registry CA cert to /etc/docker/certs.d/
+      copy:
+        content: |
+          {{ cert_output.stdout }}
+        dest: /etc/docker/certs.d/registry.{{ deployment_name }}.athtem.eei.ericsson.se/ca.crt
+
+    - name: Copy godebug workaround to systemd docker
+      copy:
+        src: godebug.conf
+        dest: /etc/systemd/system/docker.service.d/
+      register: godebug
+        
+    - name: Restart docker service
+      systemd:
+        name: docker
+        state: restarted
+        daemon_reload: yes
+      when: godebug.changed
+  delegate_to: '{{ deployment_name }}-client'
+  run_once: yes
+  become: yes
+
+  always:
+    - name: Clean up temporary files on AWX
+      file:
+        path: '{{ item }}'
+        state: absent
+      loop:
+        - /tmp/helm
+        - /tmp/kubectl
+        - /tmp/{{ deployment_name }}_ssh_key
+        - /tmp/config
+        - /tmp/chrony.conf
+        - /tmp/resolved.conf
+      delegate_to: localhost

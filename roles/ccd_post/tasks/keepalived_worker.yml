@@ -1,0 +1,70 @@
+- debug:
+    msg: "{{ inventory_hostname }} is in ccm_lb group"
+  when: inventory_hostname in groups["ccm_lb"]
+
+- name: Configure Keepalived
+  block:
+    - name: Create keepalived config for worker VIP
+      template:
+        src: keepalived.conf.j2
+        dest: /etc/keepalived/keepalived.conf
+        backup: yes
+      vars:
+        state: '{{ "MASTER" if inventory_hostname == groups["ccm_lb"][0] else "BACKUP" }}'
+        priority: '{{ "101" if inventory_hostname == groups["ccm_lb"][0] else "100" }}'
+        worker_vip_password: 12shroot
+
+    - name: Enabled and Start Keepalived
+      systemd:
+        name: keepalived
+        state: restarted
+        daemon_reload: yes
+        enabled: yes
+
+  when: inventory_hostname in groups["ccm_lb"]
+
+- name: Set rp_filter=2 on all nodes
+  sysctl:
+    name: 'net.ipv4.conf.internal.rp_filter'
+    value: '2'
+    sysctl_set: yes
+
+- name: Deploy CCM (bmccd5 only)  
+  block:
+    - name: Create CCM in K8s (bmccd5 only)
+      block:
+        - name: Create ccm.yaml
+          template:
+            src: ccm.yaml.j2
+            dest: /tmp/ccm.yaml
+        - name: Deploy CCM
+          shell: /usr/local/bin/kubectl create -f /tmp/ccm.yaml
+          ignore_errors: true
+          environment:
+            KUBECONFIG: /etc/kubernetes/admin.conf
+        - name: Cleanup ccm.yaml
+          file:
+            path: /tmp/ccm.yaml
+            state: absent
+      delegate_to: '{{ groups["master"]|first }}'
+      
+
+    - name: Wait for CCM to deploy
+      pause:
+        minutes: 1
+
+    - name: Check CCM is deployed
+      kubernetes.core.k8s_info:
+        name: ews-ccm
+        kind: Deployment
+        namespace: kube-system
+      register: ccm_result
+      environment:
+        K8S_AUTH_KUBECONFIG: "/tmp/{{ deployment_name }}.admin.conf"
+
+    - name: Dump K8sinfo
+      debug:
+        var: ccm_result
+
+  run_once: true
+  delegate_to: localhost

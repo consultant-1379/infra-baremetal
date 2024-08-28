@@ -1,0 +1,189 @@
+- name: Get iLO information from oa_response
+  block:
+  - name: Getting information from chassis
+    uri:
+      url: "https://{{oa_ip}}/xmldata?item=all"
+      return_content: yes
+      validate_certs: no
+      body_format: json
+    register: oa_response
+    loop: "{{oa_ips}}"
+    loop_control:
+      loop_var: oa_ip
+      label: "{{oa_ip}}"
+
+  - name: Get IP Address of the 2nd OA for each chassis
+    xml:
+      xmlstring: "{{oa_result.content}}"
+      xpath: "/RIMP/INFRA2/MANAGERS/MANAGER[2]/MGMTIPADDR"
+      content: text
+    register: oa2
+    loop: "{{oa_response.results}}"
+    loop_control:
+      loop_var: oa_result
+      label: '{{ oa_result.oa_ip }}'
+  - name: Get HPE Virtual Connect domain
+    xml:
+      xmlstring: "{{oa_result.content}}"
+      xpath: "/RIMP/INFRA2/VCM/vcmDomainName" 
+      content: text
+    register: vcdomain
+    loop: "{{oa_response.results}}"
+    loop_control:
+      loop_var: oa_result
+      label: '{{ oa_result.oa_ip }}'
+  - name: Get Interconnect bay details
+    xml:
+      xmlstring: "{{oa_result.content}}"
+      xpath: "/RIMP/INFRA2/SWITCHES/SWITCH[*]/MGMTIPADDR"
+      content: text
+    register: interconnect
+    loop: "{{oa_response.results}}"
+    loop_control:
+      loop_var: oa_result
+      label: '{{ oa_result.oa_ip }}'
+
+  - name: Set fact for Fabrictype
+    set_fact:
+      fabrictype: '{{ "INTERCONNECT_TYPE_ETH" if passthrough else "INTERCONNECT_TYPE_FIB" }}'
+
+  - name: Get Brocade Switch interconnect bay numbers
+    xml:
+      xmlstring: "{{oa_result.content}}"
+      xpath: '/RIMP/INFRA2/SWITCHES/SWITCH[FABRICTYPE[text()="{{ fabrictype }}"]]/BAY/CONNECTION'
+      content: text
+    register: fc_switch_bays
+    loop: "{{oa_response.results}}"
+    loop_control:
+      loop_var: oa_result
+      label: '{{ oa_result.oa_ip }}'
+  - set_fact:
+      chassis_list: '{{ chassis_list|default([]) + [
+            { "oa1_ip": oa.oa_ip,
+              "oa2_ip": oa2.results[oa_num].matches|map(attribute="MGMTIPADDR")|first,
+              "interconnect_ips": interconnect.results[oa_num].matches|map(attribute="MGMTIPADDR")|list,
+              "vcdomain": vcdomain.results[oa_num].matches[0].vcmDomainName,
+              "fc_switch_bays": fc_switch_bays.results[oa_num].matches| map(attribute="CONNECTION")|list
+            }
+          ]
+        }}'
+    loop: '{{ oa_response.results }}'
+    loop_control:
+      loop_var: oa
+      index_var: oa_num
+      label: '{{ oa.oa_ip }}'
+
+  - name: Get iLO IP addresses from chassis response
+    xml:
+      xmlstring: "{{blade_result.content}}"
+      xpath: "/RIMP/INFRA2/BLADES/BLADE[{{blade_selector}}]/MGMTIPADDR"
+      content: text
+    register: oa
+    loop: "{{oa_response.results}}"
+    loop_control:
+      loop_var: blade_result
+      label: "Get iLOs"
+
+  - name: Get server names from chassis response
+    xml:
+      xmlstring: "{{blade_result.content}}"
+      xpath: "/RIMP/INFRA2/BLADES/BLADE[{{blade_selector}}]/NAME"
+      content: text
+    register: oa_names
+    loop: "{{oa_response.results}}"
+    loop_control:
+      loop_var: blade_result
+      label: "Get server names"
+
+  - name: Saving iLO IP addresses to ilos variable
+    set_fact:
+      ilos: "{{ilos|default([]) + ilo_match|map(attribute='MGMTIPADDR')|list}}"
+    loop: "{{oa.results| map(attribute='matches')|list}}"
+    loop_control:
+      loop_var: ilo_match
+      label: ""
+
+  - name: Saving server names
+    set_fact:
+      server_names: "{{server_names|default([]) + name_match|map(attribute='NAME')|map('regex_replace','\\.athtem.*','')|list }}"
+    loop: "{{oa_names.results| map(attribute='matches')|list}}"
+    loop_control:
+      loop_var: name_match
+      label: ""
+
+  - name: Check if controllers are rackmount servers
+    set_fact:
+      controllers_are_racks: "{{False if ctrl_ilo_ips| intersect(ilos) else True }}"
+
+  - debug:
+      msg: "Controllers are {{ '' if controllers_are_racks else 'not ' }}rack servers."
+
+  - name: Add Controller iLO IP addresses to the ilos list
+    set_fact:
+      ilos: "{{ilos + ctrl_ilo_ips | unique}}"
+    when: controllers_are_racks
+  when: not all_racks| bool
+
+
+- name: Get server names for rack server names
+  set_fact:
+    server_names: "{{server_names | default([])  + [ lookup('dig', ilo_ip + '/PTR', dns_server).split('.')|first | regex_replace('ilo','')]}}"
+  loop: "{{ilos}}"
+  vars:
+    dns_server: '@{{ dns_servers|first }}'
+  loop_control:
+    loop_var: ilo_ip
+    label: "{{ilo_ip}}"
+  when: all_racks
+
+- name: Add Controller server names for rack servers
+  set_fact:
+    server_names: "{{server_names | default([])  + [ lookup('dig', ctrl_ilo_ip + '/PTR', dns_server).split('.')|first ]}}"
+  loop: "{{ctrl_ilo_ips}}"
+  vars:
+    dns_server: '@{{ dns_servers|first }}'
+  loop_control:
+    loop_var: ctrl_ilo_ip
+    label: "{{ctrl_ilo_ip}}"
+  when: controllers_are_racks is defined and controllers_are_racks and not all_racks
+
+- name: Get information from HP iLO
+  hpilo_info:
+    host: "{{ilo_ip}}"
+    login: "{{pm_user}}"
+    password: "{{pm_password}}"
+  loop: "{{ilos}}"
+  loop_control:
+    loop_var: ilo_ip
+    label: "{{ilo_ip}}"
+  register: ilo_infos
+
+- name: "Save iLO info from first server"
+  set_fact:
+    myilo: '{{ ilo_infos.results[0] }}'
+    slot: '{{ "Embedded" if nic_slot == "Embedded" else "Slot " + nic_slot | default(1)|string }}'
+
+-  name: "Find the hw_ethX values for the NIC in {{ slot }}"
+   set_fact:
+      slot_macs: '{{ slot_macs|default([]) + [ item if [myilo[item].macaddress]| select("match",partial_mac) | list else "" ]  }}'
+   loop: '{{ hw_ethX_list }}'
+   vars:
+     partial_mac: "^{{ myilo.hw_health.nic_information[slot].mac_address[:-2] |upper }}"
+     hw_ethX_list: '{{ myilo | json_query("keys(@)")| select("match","^hw_eth\d+")|list }}'
+
+- name: "Save the hw_ethX value for the first port of the NIC in {{ slot }}"
+  set_fact:
+    first_mac: '{{ slot_macs | reject("equalto","")| sort | first }}'
+
+- name: Save MAC addresses and Serial Numbers
+  set_fact:
+    mac_addresses: '{{ ilo_infos.results | map(attribute=first_mac) | map(attribute="macaddress") | list }}'
+    serial_numbers: "{{ ilo_infos.results | map(attribute='hw_system_serial') |list }}"
+
+- name: Build nodes list
+  set_fact:
+    nodes: "{{ nodes|default([]) + [{'ilo_ip': node.0,'name':node.1, 'comment':'','capabilities':'','mac':node.2, 'serial': node.3} ] }}"
+  loop: "{{ ilos| zip(server_names,mac_addresses,serial_numbers)|list}}"
+  loop_control:
+    loop_var: node
+    label: "{{node.0}}"

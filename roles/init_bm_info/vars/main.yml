@@ -1,0 +1,17 @@
+storage_choices:
+    - unity
+    - powerflex
+    - 3par
+    - ceph
+storage_protocol_choices:
+    - powerflex
+    - iSCSI
+    - FC
+    - ceph
+nas_choices:
+    - powerstore
+    - va
+    - cephfs
+ks_img_choices:
+    - reuse
+    - new

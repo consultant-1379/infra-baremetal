@@ -1,0 +1,10 @@
+- name: Get server information from OME
+  command: "{{role_path}}/files/get_devices.py --user {{ome.user}} --ome {{ome.ip}} --group {{ome.group}}"
+  environment:
+      OME_PWD: "{{ome.password}}"
+  register: server_info
+  delegate_to: localhost
+
+- name: Save result to dell_nodes variable
+  set_fact:
+    dell_nodes: "{{ server_info.stdout | from_json | list }}"

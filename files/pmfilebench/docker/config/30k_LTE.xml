@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workload>
+  <rop id="15">
+    
+    <!-- Type 1 -->
+    <rns start="1" count="32" numnodeb="160">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="52"/>
+        <fileworkload type="CTR"  numfiles="1"  filesize="4812"/>
+        <fileworkload type="GPEH" numfiles="1" filesize="256"/>
+      </nodeb>
+    </rns> 
+	<!-- Type 2 -->
+    <rns start="33" count="16" numnodeb="160">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="52"/>
+        <fileworkload type="CTR"  numfiles="1"  filesize="4812"/>
+        <fileworkload type="GPEH" numfiles="1" filesize="256"/>
+	<fileworkload type="UETR" numfiles="1" filesize="154"/>
+      </nodeb>
+    </rns>
+  </rop>
+  <retention type="XML:15"  value="288"/>
+  <retention type="CTR:15"  value="24"/>
+  <retention type="UETR:15" value="24"/>
+  <retention type="GPEH:15" value="24"/>
+  <retention type="GPEH:01" value="24"/>
+  
+  <writesize type="XML" value="64"/>
+  <writesize type="CTR"  value="32"/>
+  <writesize type="UETR" value="32"/>
+  <writesize type="GPEH" value="32"/>
+   
+</workload>

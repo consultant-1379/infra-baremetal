@@ -1,0 +1,275 @@
+nodes:
+  children:
+    blades: {}
+    racks: {}
+  
+  vars: 
+    ansible_user: bmadm
+    ansible_ssh_common_args: " -o StrictHostKeyChecking=no "
+
+ungrouped:
+  hosts:
+    kickstart:
+      ansible_host: 10.232.170.11
+      ansible_user: root
+
+blades:
+  hosts:
+    ieatbm7184-master-0:
+      ansible_host: 10.232.170.12
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.139
+      traffic_ip: 10.232.170.139
+      nfs_ip: 10.232.171.10
+      bmc:
+        type: hp
+        ip: 10.232.86.60
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:85:C0
+    ieatbm7185-master-1:
+      ansible_host: 10.232.170.13
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.140
+      traffic_ip: 10.232.170.140
+      nfs_ip: 10.232.171.11
+      bmc:
+        type: hp
+        ip: 10.232.86.61
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:42:10
+    ieatbm7186-master-2:
+      ansible_host: 10.232.170.14
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.141
+      traffic_ip: 10.232.170.141
+      nfs_ip: 10.232.171.12
+      bmc:
+        type: hp
+        ip: 10.232.86.62
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:85:B0
+    ieatbm7187-worker-0:
+      ansible_host: 10.232.170.15
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.142
+      traffic_ip: 10.232.170.142
+      nfs_ip: 10.232.171.13
+      bmc:
+        type: hp
+        ip: 10.232.86.63
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:86:10
+    ieatbm7188-worker-1:
+      ansible_host: 10.232.170.16
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.143
+      traffic_ip: 10.232.170.143
+      nfs_ip: 10.232.171.14
+      bmc:
+        type: hp
+        ip: 10.232.86.64
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:43:30
+    ieatbm7189-worker-2:
+      ansible_host: 10.232.170.17
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.144
+      traffic_ip: 10.232.170.144
+      nfs_ip: 10.232.171.15
+      bmc:
+        type: hp
+        ip: 10.232.86.65
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:41:E0
+    ieatbm7190-worker-3:
+      ansible_host: 10.232.170.18
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.145
+      traffic_ip: 10.232.170.145
+      nfs_ip: 10.232.171.16
+      bmc:
+        type: hp
+        ip: 10.232.86.66
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:85:E0
+    ieatbm7191-worker-4:
+      ansible_host: 10.232.170.19
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.146
+      traffic_ip: 10.232.170.146
+      nfs_ip: 10.232.171.17
+      bmc:
+        type: hp
+        ip: 10.232.86.67
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:3E:30
+    ieatbm7192-worker-5:
+      ansible_host: 10.232.170.20
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.147
+      traffic_ip: 10.232.170.147
+      nfs_ip: 10.232.171.18
+      bmc:
+        type: hp
+        ip: 10.232.86.68
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:5B:60
+    ieatbm7193-worker-6:
+      ansible_host: 10.232.170.21
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.148
+      traffic_ip: 10.232.170.148
+      nfs_ip: 10.232.171.19
+      bmc:
+        type: hp
+        ip: 10.232.86.69
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:85:70
+    ieatbm7194-worker-7:
+      ansible_host: 10.232.170.22
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.149
+      traffic_ip: 10.232.170.149
+      nfs_ip: 10.232.171.20
+      bmc:
+        type: hp
+        ip: 10.232.86.70
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:33:20
+    ieatbm7195-worker-8:
+      ansible_host: 10.232.170.23
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.150
+      traffic_ip: 10.232.170.150
+      nfs_ip: 10.232.171.21
+      bmc:
+        type: hp
+        ip: 10.232.86.71
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:7F:50
+    ieatbm7196-worker-9:
+      ansible_host: 10.232.170.24
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.151
+      traffic_ip: 10.232.170.151
+      nfs_ip: 10.232.171.22
+      bmc:
+        type: hp
+        ip: 10.232.86.72
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:40:70
+    ieatbm7197-worker-10:
+      ansible_host: 10.232.170.25
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.152
+      traffic_ip: 10.232.170.152
+      nfs_ip: 10.232.171.23
+      bmc:
+        type: hp
+        ip: 10.232.86.73
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:40:30
+    ieatbm7198-worker-11:
+      ansible_host: 10.232.170.26
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.153
+      traffic_ip: 10.232.170.153
+      nfs_ip: 10.232.171.24
+      bmc:
+        type: hp
+        ip: 10.232.86.74
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:43:50
+    ieatbm7199-worker-12:
+      ansible_host: 10.232.170.27
+      ansible_internal:
+         ipv4:
+           address: 10.232.171.154
+      traffic_ip: 10.232.170.154
+      nfs_ip: 10.232.171.25
+      bmc:
+        type: hp
+        ip: 10.232.86.75
+        user: 'cloud'
+        password: 'cl0udroot'
+      mac: D0:67:26:AB:63:10
+ 
+
+# Groups and variables for CCD install
+all:
+  vars:
+    nfs_provisioner_enabled: true
+    container_registry_enabled: false
+    ccd_licensing_enabled: false
+    kube_apiserver_ip: 10.232.171.138
+    kube_api_ingress_host: api.bmccd2.athtem.eei.ericsson.se
+    kube_api_vip_enabled: true
+    keepalived_virtual_router_id: 100
+    kubernetes_interface_override: internal
+    calico_ip_autodetection_method: "interface=internal"
+    pm_server_volume_storage_class: erikube-nfs
+
+etcd:
+  hosts:
+    ieatbm7184-master-0:
+    ieatbm7185-master-1:
+    ieatbm7186-master-2:
+
+master:
+  hosts:
+    ieatbm7184-master-0:
+    ieatbm7185-master-1:
+    ieatbm7186-master-2:
+
+worker:
+  hosts:
+    ieatbm7187-worker-0:
+    ieatbm7188-worker-1:
+    ieatbm7189-worker-2:
+    ieatbm7190-worker-3:
+    ieatbm7191-worker-4:
+    ieatbm7192-worker-5:
+    ieatbm7193-worker-6:
+    ieatbm7194-worker-7:
+    ieatbm7195-worker-8:
+    ieatbm7196-worker-9:
+    ieatbm7197-worker-10:
+    ieatbm7198-worker-11:
+    ieatbm7199-worker-12:
+
+ingress_lb:
+  hosts:
+    ieatbm7189-worker-2:
+  vars:
+    lb_internal_ip: 10.232.171.144
+    lb_external_ip: 10.232.170.144

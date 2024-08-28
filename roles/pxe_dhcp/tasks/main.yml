@@ -1,0 +1,143 @@
+---
+- name: Set server variables
+  set_fact:
+    servers: "{{ groups.nodes }}"
+    cloud_dir: "deployments/{{ deployment_name }}"
+
+- name: Generate dhcpd.conf
+  template:
+    src: dhcpd.conf.j2
+    dest: /etc/dhcp/dhcpd.conf
+    backup: yes
+  register: gen_dhcpd
+
+- name: Restart DHCP server
+  service:
+    name: dhcpd
+    state: restarted
+    enabled: true
+  when: gen_dhcpd.changed
+
+- name: "Create SLES15 {{ sp_version }} repo on the kickstart VM"
+  block:
+    - name: Ensure tftp services are stopped
+      systemd:
+        name: '{{ item }}'
+        state: stopped
+      loop:
+        - tftp.service
+        - tftp.socket
+    - name: "Create SLES15 {{ sp_version }} Directory in HTTPD webroot"
+      file:
+        path: "/var/www/html/SLES15-{{ sp_version }}/"
+        state: directory
+    - name: "Set SLES {{ sp_version }} ISO to use"
+      set_fact:
+        sles15sp_img: "{{ sles15sp4_img if sp_version == 'SP4' else sles15sp3_img if sp_version == 'SP3' else sles15sp2_img }}"
+    - name: "Download SLES15 {{ sp_version }} ISO"
+      get_url:
+        url: http://{{ repo_ip_address }}/{{ repo_folder }}/{{ sles15sp_img }}
+        dest: "/var/www/html/SLES15-{{ sp_version }}/"
+        mode: '0440'
+      tags:
+        - download_iso
+    - name: "Mount SLES {{ sp_version }} ISO to /var/tmp/sles_iso"
+      shell: "mount -o loop /var/www/html/SLES15-{{ sp_version }}/{{ sles15sp_img }} /mnt"
+      tags:
+        - download_iso
+    - name: "Copy ISO Files to /var/www/html/SLES15-{{ sp_version }}/"
+      copy:
+        src: /mnt/
+        dest: "/var/www/html/SLES15-{{ sp_version }}/"
+        remote_src: yes
+      tags:
+        - download_iso
+    - name: "Unmount SLES {{ sp_version }} ISO from /mnt"
+      shell: "umount /mnt"
+      tags:
+        - download_iso
+    - name: Check current installed version of tftpboot package
+      shell: "rpm -qa | grep tftpboot-installation-SLE"
+      register: current_tftpboot
+    - name: Remove current tftpboot-installation package
+      package:
+        name: "{{ current_tftpboot.stdout }}"
+        state: absent
+    - name: Delete contents of /var/lib/tftpboot/
+      shell: "rm -rf /var/lib/tftpboot/*;ls -alrth /var/lib/tftpboot/"
+      register: tftp_cleanup
+    - debug:
+        var: tftp_cleanup.stdout_lines
+    - name: "Find tftpboot rpm for SLES15-{{ sp_version }}"
+      find:
+        path: /var/www/html/SLES15-{{ sp_version }}/Module-Basesystem/noarch/
+        file_type: file
+        use_regex: yes
+        patterns:
+          - '^tftpboot-installation-SLE-15-{{ sp_version }}-x86_64'
+      register: find_tftpboot_rpm
+    - name: "Install tftpboot-installation rpm for SLES15-{{ sp_version }}"
+      yum:
+        name: "{{ find_tftpboot_rpm.files | map(attribute='path') | first }}"
+        state: present
+    - name: Copy tftpboot installation file to /var/lib/tftpboot/ directory
+      copy:
+        src: "/usr/share/tftpboot-installation/SLE-15-{{ sp_version }}-x86_64/"
+        dest: /var/lib/tftpboot/
+        remote_src: yes
+    - name: Restart tftp services
+      systemd:
+        name: '{{ item }}'
+        state: restarted
+      loop:
+        - tftp.service
+        - tftp.socket
+  delegate_to: kickstart
+  run_once: yes
+  tags:
+    - ks_repo
+
+- name: Generate grub.cfg file for each server
+  template:
+    src: grub.cfg.j2
+    dest: /var/lib/tftpboot/EFI/BOOT/grub.cfg
+
+- name: Check SSH key on Kickstart VM exists
+  stat:
+    path: /root/.ssh/id_rsa
+  register: key_exists
+
+- name: Setup SSH Keys on Kickstart VM
+  shell: ssh-keygen -q -t rsa -f /root/.ssh/id_rsa -N ""
+  when: not key_exists.stat.exists
+
+- name: Retrieve lun-wwn.json from Kickstart
+  slurp:
+    src: /root/lun-wwn.json
+  register: lun_wwn
+  when: powerflex_host is not defined and is_ceph is not defined
+
+- set_fact:
+    server_luns: "{{ lun_wwn['content'] | b64decode | from_json }}"
+  when: powerflex_host is not defined and is_ceph is not defined
+
+- name: Retrieve RSA PUB Key from Kickstart
+  slurp:
+    src: ~/.ssh/id_rsa.pub
+  register: root_rsa_pub
+
+- name: Generate autoinst.xml file for each server
+  template:
+    src: autoinst.xml.j2
+    dest: /var/www/html/autoinst-{{ server }}.xml
+  vars:
+    rsa_pub: "{{ root_rsa_pub['content'] | b64decode | regex_replace('\\n','') }}"
+    ansible_rsa_pub: "{{ lookup('file', 'awx_ssh.pub') }}"
+  loop: "{{ servers }}"
+  loop_control:
+    loop_var: server
+
+- name: Ensure HTTP server is started
+  service:
+    name: httpd
+    state: started

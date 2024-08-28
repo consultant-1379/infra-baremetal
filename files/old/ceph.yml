@@ -1,0 +1,13 @@
+---
+- hosts: master[0]
+  gather_facts: False
+  become: yes
+  roles:
+    - name: Deploy Ceph
+      role: rook_ceph
+      run_once: true
+      vars:
+        # storage_nodes: "{{ groups.storage | mandatory }}"
+        # non_storage_nodes: "{{ groups.all | difference(groups.storage) }}"
+        storage_osd_nodes: "{{ groups.storage_osd | mandatory }}"
+        storage_mon_nodes: "{{ groups.storage_mon | mandatory }}"

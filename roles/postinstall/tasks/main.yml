@@ -1,0 +1,137 @@
+- name: Wait for OS to be up
+  wait_for_connection:
+ 
+- name: set hostname
+  shell: 'hostnamectl set-hostname {{ inventory_hostname }}'
+
+- name: Copy chrony.d pool.conf
+  copy:
+    src: pool.conf
+    dest: /etc/chrony.d/pool.conf
+  register: chrony_config
+
+- name: Enable and restart chrony
+  systemd:
+    name: chronyd
+    enabled: yes
+    state: restarted
+  when: chrony_config.changed
+
+- name: Run chronyc -a makestep
+  shell: chronyc -a makestep
+  when: chrony_config.changed
+
+- name: Add Zypper repos
+  zypper_repository:
+    name: '{{ repo }}'
+    repo: '{{ repo_base_url }}/{{ repo }}'
+    disable_gpg_check: yes
+  loop: '{{ repos }}'
+  loop_control:
+    loop_var: repo
+    label: '{{ repo }}'
+
+- name: Add backports repo
+  zypper_repository:
+    name: Backports
+    repo: "https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SUSE/Backports/SLE-15-SP2_x86_64/standard/"
+    disable_gpg_check: yes
+
+- name: Update all packages to latest
+  zypper:
+    name: '*'
+    state: latest
+    update_cache: yes
+  tags:
+    - update_pkgs
+
+- name: 'Install {{ extra_packages | join(", ") }}'
+  zypper:
+    name: '{{ package }}'
+    state: present
+  loop: '{{ extra_packages }}'
+  loop_control:
+    loop_var: package
+    label: '{{ package }}'
+  tags:
+    - install_pkgs
+
+- name: Enable docker in systemd
+  systemd:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: Create /etc/systemd/system/docker.service.d directory
+  file:
+    path: /etc/systemd/system/docker.service.d
+    state: directory
+
+- name: Add proxy configuration for Docker service
+  template:
+    src: docker-http-proxy.conf.j2
+    dest: /etc/systemd/system/docker.service.d/http-proxy.conf
+    mode: 0644
+  become: True
+  notify: restart_docker
+
+- name: Disable root SSH login
+  replace:
+    path: /etc/ssh/sshd_config
+    regexp: 'PermitRootLogin yes.*'
+    replace: 'PermitRootLogin no'
+  notify: restart_ssh
+
+- name: Create /etc/modules-load.d/ccd_modules.conf
+  template:
+    src: ccd_modules.conf.j2
+    dest: /etc/modules-load.d/
+
+- name: Include tasks for network configuration
+  include_tasks: network.yml
+  when: is_ceph is not defined
+
+- name: Include tasks for network configuration (Ceph POC)
+  include_tasks: ceph.yml
+  when: is_ceph is defined and is_ceph
+
+- name: check for /etc/sysctl.d/70-yast.conf
+  stat:
+    path: /etc/sysctl.d/70-yast.conf
+  register: yast_sysctl
+
+- name: Clear content from /etc/sysctl.d/70-yast.conf
+  shell: "> /etc/sysctl.d/70-yast.conf"
+  become: true
+  when: yast_sysctl.stat.exists
+
+- name: Reboot Servers after package update
+  reboot:
+    reboot_timeout: 900
+  async: 5
+  poll: 0
+  tags:
+    - post_reboot
+
+- name: Get interface used by default route
+  shell: "ip route show | awk '/default/{ print $5}'"
+  register: default_iface
+
+- name: set sysctl settings (all nodes)
+  sysctl:
+    name: '{{ setting.name }}'
+    value: '{{ setting.value }}'
+    sysctl_set: yes
+  vars:
+    rp_filter_iface: '{{ default_iface.stdout }}'
+  loop: '{{ sysctl_settings }}'
+  loop_control:
+    loop_var: setting
+    label: '{{ setting.name }}'
+
+- name: set sysctl settings to allow for routing (master nodes only)
+  sysctl:
+    name: net.ipv4.conf.bond0.rp_filter
+    value: '2'
+    sysctl_set: yes
+  when: inventory_hostname in groups["master"]

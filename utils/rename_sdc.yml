@@ -1,0 +1,93 @@
+---
+- hosts: localhost
+  gather_facts: no
+  vars:
+    username: admin
+    password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          63623930653063623065386234613933643437343265393766313730633539333365383461386430
+          6466633065336562313365636163663431336135356439620a636431663164346138313237303162
+          32663734633038396431313562623634633865653738663936366135643036323331663762313963
+          3032666666646265350a366564316166383963376339623834656465363136366234363435313365
+          6264
+    verifycert: False
+  tasks:
+    - name: Set storage ip names for OpenStack
+      set_fact:
+         storage_ips:
+           - storage_ip
+           - storage_mgmt_ip
+         servers: '{{ groups["overcloud"] }}'
+      when: '"overcloud" in groups'
+      run_once: True
+
+    - name: Set storage ip names for Baremetal CCD
+      set_fact:
+         storage_ips:
+           - storage1_ip
+           - storage2_ip
+         servers: '{{ groups["worker"] }}'
+      when: '"overcloud" not in groups'
+      run_once: True
+
+    - name: Get server storage IPs
+      set_fact:
+        server_storage_ips: '{{ server_storage_ips| default([]) + [ 
+                                  { 
+                                    "name": server, 
+                                    "storage_ip": hostvars[server][storage_ips[0]] 
+                                  },
+                                   { 
+                                    "name": server, 
+                                    "storage_ip": hostvars[server][storage_ips[1]] 
+                                  } 
+                              ] }}'
+      loop: '{{ servers }}'
+      loop_control:
+        loop_var: server
+        label: '{{ server }}'
+
+    - name: Get SDC details using SDC ip
+      dellemc.powerflex.sdc:
+        gateway_host: "{{gateway_host}}"
+        username: "{{username}}"
+        password: "{{password}}"
+        verifycert: "{{verifycert}}"
+        sdc_ip: "{{ server.storage_ip }}"
+        state: "present"
+      register: sdc
+      loop: '{{ server_storage_ips }}'
+      loop_control:
+        loop_var: server
+        label: '{{ server.name }}'
+      ignore_errors: True
+
+    - name: Filter out SDCs which already have name = <server hostname>
+      set_fact:
+        sdcs_to_update: '{{ sdc.results | rejectattr("failed") | rejectattr("sdc_details.name","in", servers) | map(attribute="server") | list }}'
+
+    - name: Set SDC name to server hostname
+      dellemc.powerflex.sdc:
+        gateway_host: "{{gateway_host}}"
+        username: "{{username}}"
+        password: "{{password}}"
+        verifycert: "{{verifycert}}"
+        sdc_ip: "{{ server.storage_ip }}"
+        sdc_new_name: '{{ server.name }}'
+        state: "present"
+      when: sdcs_to_update |length > 0
+      loop: '{{ sdcs_to_update }}'
+      loop_control:
+        loop_var: server
+        label: '{{ server.name }}'
+    - name: Get SDC details
+      set_fact:
+        sdc_details_list: '{{ sdc_details_list| default([ fmt_string.format("SDC Name","SDC IP Address", "SDC GUID") ]) + [ fmt_string.format(item.name,item.sdcIp,item.sdcGuid)] }}'
+      loop: '{{ sdc.results | rejectattr("failed") | json_query(query) }}'
+      loop_control:
+        label: '{{ item.name }}'
+      vars:
+        query: '[].sdc_details.{name: name,sdcIp: sdcIp,sdcGuid: sdcGuid}'
+        fmt_string: "{:<21} {:<15} {:<36}"
+    - debug:
+        var: sdc_details_list

@@ -1,0 +1,15 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+gfxmode=auto
+timeout=5
+default=1
+
+locale_dir=/EFI/BOOT/locale/
+lang=en_US
+
+menuentry 'Installation' {
+  set gfxpayload=keep
+  echo 'Loading kernel ...'
+  linuxefi  /boot/x86_64/loader/linux instsys=tftp://{{ dhcp_next_server }}/boot/x86_64/root install=http://{{ dhcp_next_server }}/SLES15-{{ sp_version }}/ textmode=1 autoyast=http://{{ dhcp_next_server }}/autoinst-{%raw%}${net_efinet0_hostname}{%endraw%}.xml net.ifnames=1
+  echo 'Loading initrd ...'
+  initrdefi /boot/x86_64/loader/initrd
+}

@@ -1,0 +1,4 @@
+default {{ traffic_gateway }} - traffic
+{% if network_deployment_type is defined and network_deployment_type == "dualstack" %}
+default {{ traffic_gateway_ipv6 }} - traffic
+{% endif %}

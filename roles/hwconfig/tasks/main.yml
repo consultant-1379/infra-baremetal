@@ -1,0 +1,78 @@
+- name: Copy ERIChwcomm package to kickstart VM
+  copy:
+    src: ERIChwcomm_CXP9032292-1.66.4.rpm
+    dest: /tmp
+
+- name: Install ERIChwcomm package
+  yum:
+    name: /tmp/ERIChwcomm_CXP9032292-1.66.4.rpm
+    state: present
+
+- name: Copy custom blade_profiles file
+  copy:
+    src: blade_profiles
+    dest: /opt/ericsson/hw_comm/etc/blade_profiles
+    owner: root
+    group: root
+    mode: 0775
+
+- name: Copy Gen9 Blade bios settings to kickstart VM
+  template:
+    src: 'gen9_blade_bios_settings.json.j2'
+    dest: /opt/ericsson/hw_comm/etc/gen9_blade_bios_settings.json
+    mode: 0775
+
+- name: Copy Blade bios settings to kickstart VM
+  copy:
+    src: '{{ tf_file }}'
+    dest: /opt/ericsson/hw_comm/etc/
+    mode: 0775
+  loop:
+    - gen10_blade_bios_settings.json
+    - gen10_str_rack_bios_settings.json
+  loop_control:
+    loop_var: tf_file
+    label: '{{ tf_file }}'
+
+# - name: Update vcconfiguration.py to hide unused flexnics
+#   patch:
+#     src: '{{ patch_file }}'
+#     dest: /opt/ericsson/hw_comm/lib/{{ patch_file | regex_replace(".patch","") }}
+#   loop:
+#     - hw_constants.py.patch
+#     - hw_rest_session.py.patch
+#     - vcconfiguration.py.patch
+#   loop_control:
+#     loop_var: patch_file
+
+- name: Generate server names using ieatbm prefix
+  set_fact:
+    new_nodes: '{{ new_nodes| default([])  + [item | combine({ "name": item.name | regex_replace("[A-z]*(\d+)", prefix + "\g<1>") | regex_replace("ilo|.athtem.eei.ericsson.se","") })] }}'
+  vars:
+    prefix: '{{"ieatbmx" if all_racks else "ieatbmb"}}'
+  loop: '{{ nodes }}'
+  loop_control:
+    label: '{{ item.name }}'
+
+- name: Generate server names using ieatbm prefix for dell nodes
+  set_fact:
+    new_dell_nodes: '{{ new_dell_nodes | default([])  + [item | combine({ "name": item.name | regex_replace("[A-z]*(\d+)", "ieatbmx" + "\g<1>") | regex_replace("ilo|.athtem.eei.ericsson.se","") })] }}'
+  loop: '{{ dell_nodes }}'
+  loop_control:
+    label: '{{ item.name }}'
+  when: dell_nodes is defined
+
+- name: Generate SED
+  template:
+    src: sed.j2
+    dest: '{{ deployment_name }}_sed'
+
+- name: Update nodes list with ieatbmXXXX server names
+  set_fact:
+    nodes: '{{ new_nodes + new_dell_nodes | default([]) }}'
+
+
+- name: Cleanup ERIChwcomm package from /tmp on kickstart VM
+  file:
+    path: /tmp/ERIChwcomm_CXP9032292-1.66.4.rpm
+    state: absent

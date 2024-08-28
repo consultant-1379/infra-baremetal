@@ -1,0 +1,98 @@
+#SED Template Version: 1.0.260
+Deployment_Type=
+Hardware_Type=mixed
+{% if not all_racks %}
+# VLANs
+VLAN_ID_provisioning={{ provisioning_vlan_id }}
+VLAN_ID_traffic={{ traffic_vlan_id }}
+{% if is_ceph is not defined %}
+VLAN_ID_nfs={{ nfs_vlan_id }}
+{% endif %}
+VLAN_ID_internal={{ internal_vlan_id }}
+
+uplink_A=UplinkSet_A
+uplink_B=UplinkSet_B
+
+# Network names on the VC
+{% set provisioning_net = lookup('dig',provisioning_gateway + '/PTR','@' + dns_servers|first)|regex_replace("\-vip.*","") %}
+{% set traffic_net = lookup('dig',traffic_gateway + '/PTR','@' + dns_servers|first)|regex_replace("\-vip.*","") %}
+{% if is_ceph is not defined %}
+{% set nfs_net = lookup('dig',nfs_gateway + '/PTR','@' + dns_servers|first)|regex_replace("\-vip.*","") %}
+{% endif %}
+{% set internal_net = lookup('dig',internal_gateway + '/PTR','@' + dns_servers|first)|regex_replace("\-vip.*","") %}
+provisioning_A={{ provisioning_net }}_A
+provisioning_B={{ provisioning_net }}_B
+traffic_A={{ traffic_net }}_A
+traffic_B={{ traffic_net }}_B
+{% if is_ceph is not defined %}
+nfs_A={{ nfs_net }}_A
+nfs_B={{ nfs_net }}_B
+{% endif %}
+internal_A={{ internal_net }}_A
+internal_B={{ internal_net }}_B
+
+
+{% for chassis in chassis_list %}
+{% set chassis_name = lookup('dig',chassis.oa1_ip + '/PTR','@' + dns_servers|first)|regex_replace("oa.*","") %}
+{% set rack_name = rack_names[loop.index0] | regex_replace(" |/","_") | regex_replace("\*","-") %}
+# Chassis: {{ chassis_name }}
+
+enclosure{{ loop.index }}_enclosureName={{ chassis_name }}
+enclosure{{ loop.index }}_rackName={{ rack_name }}
+enclosure{{ loop.index }}_OAIP1={{ chassis.oa1_ip }}
+enclosure{{ loop.index }}_OAIP2={{ chassis.oa2_ip }}
+enclosure{{ loop.index }}_username={{ pm_user }}
+enclosure{{ loop.index }}_password={{ pm_password }}
+
+{% if not passthrough %}
+enclosure{{ loop.index }}_SANSW_1_bay={{ chassis.fc_switch_bays[0] }}
+enclosure{{ loop.index }}_SANSW_2_bay={{ chassis.fc_switch_bays[1] }}
+{% endif %}
+
+enclosure{{ loop.index }}_VC_1_bay=1
+enclosure{{ loop.index }}_VC_2_bay=2
+
+enclosure{{ loop.index }}_VC_IP1={{ chassis.interconnect_ips[0] }}
+enclosure{{ loop.index }}_VC_IP2={{ chassis.interconnect_ips[1] }}
+enclosure{{ loop.index }}_VC_username={{ pm_user }}
+enclosure{{ loop.index }}_VC_password={{ pm_password }}
+
+{% if not passthrough %}
+enclosure{{ loop.index }}_SANSW_IP1={{ chassis.interconnect_ips[2] }}
+enclosure{{ loop.index }}_SANSW_IP2={{ chassis.interconnect_ips[3] }}
+enclosure{{ loop.index }}_SANSW_username=admin
+enclosure{{ loop.index }}_SANSW_password=password
+{% endif %}
+
+enclosure{{ loop.index }}_uplink_A_port1=enc0:1:X2
+enclosure{{ loop.index }}_uplink_A_port2=enc0:1:X3
+enclosure{{ loop.index }}_uplink_B_port1=enc0:2:X2
+enclosure{{ loop.index }}_uplink_B_port2=enc0:2:X3
+
+enclosure{{ loop.index }}_VC_domain={{ chassis.vcdomain }}
+
+{% endfor %}
+{% endif %}
+
+ntp_1_IP={{ ntp_servers[0] }}
+ntp_2_IP={{ ntp_servers[1] }}
+
+dns_domainName=athtem.eei.ericsson.se
+nameserverA={{ dns_servers[0] }}
+nameserverB={{ dns_servers[1] }}
+
+{% for node in new_nodes %}
+os_node{{ loop.index }}_hostname={{ node.name }}
+os_node{{ loop.index }}_ilo_IP={{ node.ilo_ip }}
+os_node{{ loop.index }}_iloUsername={{ pm_user }}
+os_node{{ loop.index }}_iloPassword={{ pm_password }}
+{% if not all_racks %}
+os_node{{ loop.index }}_vcProfile={{ "CCD_BM_CEPH_Profile" if is_ceph is defined and is_ceph else "CCD_BM_Profile" }}
+{% endif %}
+os_node{{ loop.index }}_serial={{ node.serial }}
+{% if all_racks %}
+os_node{{ loop.index }}_hardware_type=rack
+{% else %}
+os_node{{ loop.index }}_hardware_type=blade
+{% endif %}
+{% endfor %}

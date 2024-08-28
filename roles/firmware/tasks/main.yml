@@ -1,0 +1,81 @@
+---
+- name: "Get iLO REST manager details"
+  uri:
+    force_basic_auth: yes
+    method: GET
+    user: "{{ pm_user }}"
+    password: "{{ pm_password }}"
+    url: "https://{{ nodes[0].ilo_ip }}/redfish/v1/"
+    validate_certs: no
+  register: manager
+  retries: 10
+  delay: 10
+  until:
+    - manager.json is defined
+
+- name: "Set iLO version-specific variables"
+  set_fact:
+    oemep: "{{ 'Hp' if 'Hp' in manager.json.Oem else 'Hpe' }}"
+    reset_action: "{{ 'Reset' if 'Hp' in manager.json.Oem else 'Manager.Reset' }}"
+
+- name: "Power Off servers"
+  redfish_command:
+    category: Systems
+    command: "PowerForceOff"
+    baseuri: "{{ server.ilo_ip }}"
+    username: "{{ pm_user }}"
+    password: "{{ pm_password }}"
+  register: result
+  until: result is succeeded
+  retries: 2
+  delay: 5
+  loop: '{{ nodes }}'
+  loop_control:
+    loop_var: server
+    label: '{{ server.name }}'
+
+- name: Wait 10 seconds for servers to power down
+  pause:
+    seconds: 10
+
+- name: "Generate uri body json"
+  set_fact:
+    insert_body: "{'Image': 'http://{{ repo_ip_address }}/repo3/SPP/P45315_001_gen9spp-2021.10.0-Gen9SPP2021100.2021_1021.32.iso','Oem': {'{{oemep}}': {'BootOnNextServerReset': true}}}"
+    #insert_body: "{'Image': 'http://{{ repo_ip_address }}/repo3/baremetal/P45316_001_gen10spp-2021.10.0-SPP2021100.2021_1012.13.iso','Oem': {'{{oemep}}': {'BootOnNextServerReset': true}}}"
+
+- include_tasks: ilo_reset.yml
+  vars:
+    user: "{{ pm_user }}"
+    password: "{{ pm_password }}"
+    action: "{{reset_action}}"
+
+- name: "Insert Firmware ISO to servers and set to boot from Virtual Media on next server reset"
+  uri:
+    force_basic_auth: yes
+    method: PATCH
+    body: '{{ insert_body }}'
+    body_format: json
+    user: "{{ pm_user }}"
+    password: "{{ pm_password }}"
+    url: "https://{{ server.ilo_ip }}/redfish/v1/Managers/1/VirtualMedia/2/"
+    validate_certs: no
+  loop: '{{ nodes }}'
+  loop_control:
+    loop_var: server
+  no_log: True
+
+- name: "Power On the servers"
+  redfish_command:
+    category: Systems
+    command: "PowerOn"
+    baseuri: "{{ server.ilo_ip }}"
+    username: "{{ pm_user }}"
+    password: "{{ pm_password }}"
+  register: result
+  until: result is succeeded
+  retries: 2
+  delay: 5
+  loop: '{{ nodes }}'
+  loop_control:
+    loop_var: server
+    label: '{{ server.name }}'

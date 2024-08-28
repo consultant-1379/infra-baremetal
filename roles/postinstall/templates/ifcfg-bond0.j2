@@ -1,0 +1,8 @@
+STARTMODE=auto
+BOOTPROTO=static
+IPADDR={{ansible_host}}/{{provisioning_cidr}}
+BONDING_MASTER=yes
+BONDING_SLAVE_0={{ if_list[0] }}
+BONDING_SLAVE_1={{ if_list[1] }}
+BONDING_MODULE_OPTS='mode=active-backup miimon=100'
+MTU=9000

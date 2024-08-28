@@ -1,0 +1,13 @@
+---
+
+- name: Deploy client VM for CCD on baremetal deployments
+  include_tasks: baremetal.yml
+  when: deployment_type is defined and deployment_type == "baremetal"
+  vars:
+    config_file: "{{ lookup('env','OS_CLIENT_CONFIG_FILE')  }}"
+
+- name: Deploy client VM for CCD on OpenStack deployments
+  include_tasks: ostk.yml
+  when: deployment_type is defined and deployment_type == "openstack"
+  vars:
+    config_file: "{{ lookup('env','OS_CLIENT_CONFIG_FILE')  }}"

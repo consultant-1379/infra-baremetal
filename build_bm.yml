@@ -1,0 +1,33 @@
+---
+- hosts: phost
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  roles:
+    - role: build_ks
+      tags:
+        - create_ks
+
+- hosts: localhost
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  roles:
+    - role: common
+    - role: hwconfig
+      tags:
+        - hwconfig
+      delegate_to: kickstart
+    - role: configure_chassis
+      tags:
+        - hwsetup
+      delegate_to: kickstart
+    - role: ccd_create_inventory
+      tags:
+        - create_inventory
+    - role: configure_san
+      vars:
+        servers: '{{ nodes| map(attribute="name") | list }}'
+      tags:
+        - configure_san
+      when: powerflex_host is not defined or is_ceph is defined

@@ -1,0 +1,36 @@
+
+- name: Create pv_root
+  block:
+    - name: Create temporary directories
+      file:
+        name: '{{ item }}'
+        state: directory
+      loop: 
+        - /tmp/nfs
+        - /tmp/empty
+
+    - name: Mount the NFS shares and create pv_root
+      shell: "mkdir  /tmp/nfs/{{ pv_name }};mount {{ nas_server_ip }}:/{{ 'vx/' + pv_name if nfs_nas_ip is defined else pv_name }} /tmp/nfs/{{ pv_name }};"
+      args:
+        warn: False
+      vars:
+        pv_name: '{{ deployment_name }}-{{ item.name | regex_replace(fs_override|default(""),"") }}'
+      loop: '{{ persistent_volumes }}'
+
+    - name: Create pv_root directory and set permissions
+      shell: "mkdir /tmp/nfs/{{ pv_name }}/pv_root; chmod 777 /tmp/nfs/{{ pv_name }}/pv_root;umount /tmp/nfs/{{ pv_name }};"
+      args:
+        warn: False
+      vars:
+        pv_name: '{{ deployment_name }}-{{ item.name | regex_replace(fs_override|default(""),"") }}'
+      loop: '{{ persistent_volumes }}'
+
+    - name: Remove temporary NFS mountpoint
+      file:
+        name: '{{ item }}'
+        state: absent
+      loop: 
+        - /tmp/nfs
+        - /tmp/empty
+  delegate_to: '{{ groups["master"]| first }}'
+  become: yes

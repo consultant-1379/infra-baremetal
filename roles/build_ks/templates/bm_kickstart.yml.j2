@@ -1,0 +1,110 @@
+{%raw%}---
+- hosts: bm_kickstart_vm
+  gather_facts: False
+  become: yes
+  user: centos
+  vars:
+    pkgs:
+        - httpd
+        - dhcp
+        - tftp-server
+        - centos-release-ansible-28
+        - cloud-init
+        - python-paramiko
+        - python-netaddr
+        - pexpect
+        - pytz
+        - ansible-2.8.18
+        - screen
+    disabled_services:
+        - NetworkManager
+    enabled_services:
+        - chronyd
+        - httpd
+        - tftp.socket
+        - tftp
+    firewall_services:
+        - dhcp
+        - http
+        - tftp
+  tasks:
+{%endraw%}{% if use_proxy == true %}
+    - name: Configure yum.conf to use proxy
+      ini_file:
+        path: /etc/yum.conf
+        section: main
+        option: proxy
+        value: '{{ http_proxy }}'
+{% endif %}
+    {%raw%}- name: Configure yum.conf to only cache packages
+      ini_file:
+        path: /etc/yum.conf
+        section: main
+        option: http_caching
+        value: 'packages'
+    - name: Create resolv.conf
+      copy:
+        content: |
+{%endraw%}{% for dns in dns_servers %}
+          nameserver {{dns}}
+{% endfor %}
+          {%raw%}search ericsson.se athtem.eei.ericsson.se
+        dest: /etc/resolv.conf
+    - name: upgrade all package
+      yum:
+        name: '*'
+        state: latest
+    - name: Install required packages
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ pkgs }}"
+    - name: Make sure services are running
+      systemd:
+        state: started
+        enabled: yes
+        name: "{{ item }}"
+      loop: "{{ enabled_services }}"
+    - name: Make sure services are stopped
+      systemd:
+        state: stopped
+        enabled: no
+        name: "{{ item }}"
+      loop: "{{ disabled_services }}"
+    - name: Create SLES15 SP1 Directory in HTTPD webroot
+      file:
+        path: /var/www/html/SLES15-SP1/
+        state: directory
+    - name: Download SLES15 SP1 ISO
+      get_url:
+        url: http://{%endraw%}{{ repo_ip_address }}{%raw%}/{%endraw%}{{ repo_folder }}{%raw%}/{%endraw%}{{ sles_img }}{%raw%}
+        dest: /var/www/html/SLES15-SP1/
+        mode: '0440'
+    - name: Mount SLES SP1 ISO to /var/tmp/sles_iso
+      shell: "mount -o loop /var/www/html/SLES15-SP1/{%endraw%}{{ sles_img }}{%raw%} /mnt"
+    - name: Copy ISO Files to /var/www/html/SLES15-SP1/
+      copy:
+        src: /mnt/
+        dest: /var/www/html/SLES15-SP1/
+        remote_src: yes
+    - name: Unmount SLES SP1 ISO from /mnt
+      shell: "umount /mnt"
+    - name: Install SLES15 SP1 tftpboot installation package
+      yum:
+        name: http://{%endraw%}{{ repo_ip_address }}{%raw%}/{%endraw%}{{ repo_folder }}{%raw%}/{%endraw%}{{ tftpboot_rpm }}{%raw%}
+        state: present
+    - name: Copy tftpboot installation file to /var/lib/tftpboot/ directory
+      copy:
+        src: /usr/share/tftpboot-installation/SLE-15-SP1-x86_64/
+        dest: /var/lib/tftpboot/
+        remote_src: yes
+    - name: Configure firewalld rules to allow http, tftp and dhcp traffic
+      firewalld:
+        service: "{{ item }}"
+        permanent: true
+        state: enabled
+      loop: "{{ firewall_services }}"
+    - name: Remove eth0 file
+      file:
+        path: "/etc/sysconfig/network-scripts/ifcfg-eth0"
+        state: absent{%endraw%}

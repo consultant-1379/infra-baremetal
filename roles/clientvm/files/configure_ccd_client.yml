@@ -1,0 +1,148 @@
+---
+- hosts: ccd_client_builder
+  gather_facts: yes
+  become: yes
+  vars:
+    packages:
+      - docker-ce
+      - unzip
+      - vim
+      - tmux
+      - wget
+      - python3
+      - python3-pip
+      - chrony
+      - bind-utils
+      - zip
+  tasks:
+    - name: CentOS
+      block:
+        - name: Add docker repo
+          command: dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+
+        - name: 'Install required packages: {{ packages | join(", ") }}'
+          package:
+            name: '{{ item }}'
+            state: present
+          loop: '{{ packages }}'
+
+        - name: Update /etc/resolv.conf
+          lineinfile:
+            path: /etc/resolv.conf
+            state: present
+            insertafter: EOF
+            line: "search athtem.eei.ericsson.se ericsson.se"
+      when: ansible_distribution == "CentOS"
+
+    - name: Ubuntu
+      block:
+        - name: Copy keyring for docker apt repository to /usr/share/keyrings/docker-archive-keyring.gpg
+          copy:
+            src: docker-archive-keyring.gpg
+            dest: /usr/share/keyrings/docker-archive-keyring.gpg
+
+        - name: Create apt repository for docker
+          apt_repository:
+            repo: "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu focal stable"
+            state: present
+
+        - name: Install packages for Ubuntu
+          package:
+            name: '{{ item }}'
+            state: present
+          loop:
+            - apt-transport-https
+            - ca-certificates
+            - curl
+            - gnupg
+            - lsb-release
+            - docker-ce 
+            - docker-ce-cli 
+            - containerd.io
+            - unzip
+            - vim
+            - tmux
+            - wget
+            - python3
+            - python3-pip
+            - chrony
+            - dnsutils
+            - zip
+
+        - name: Copy /etc/systemd/resolved.conf
+          copy:
+            src: /tmp/resolved.conf
+            dest: /etc/systemd/resolved.conf
+
+        - name: Restart systemd-resolved
+          systemd:
+            name: systemd-resolved
+            state: restarted
+            enabled: yes
+      when: ansible_distribution == "Ubuntu"
+
+    - name: Copy chrony.conf to /etc/ directory
+      copy:
+        src: chrony.conf
+        dest: '{{ "/etc/chrony.conf" if ansible_distribution == "CentOS" else "/etc/chrony/chrony.conf" }}'
+
+    - name: Enable PasswordAuthentication and disable PermitRootLogin for SSHD
+      replace:
+        path: /etc/ssh/sshd_config
+        regexp: '{{ item.regex }}'
+        replace: '{{ item.replace }}'
+      loop:
+        - regex: '^PasswordAuthentication.*'
+          replace: 'PasswordAuthentication yes'
+        - regex: '^[#]?PermitRootLogin.*'
+          replace: 'PermitRootLogin no'
+
+    - name: Set Timezone
+      timezone:
+        name: Europe/Dublin
+
+    - name: Restart services
+      systemd:
+        name: '{{ item }}'
+        state: restarted
+      loop:
+        - chronyd
+        - sshd
+
+    - name: Enable and Start docker service
+      systemd:
+        name: docker
+        state: started
+        enabled: yes
+
+    - name: Create the docker group
+      group:
+        name: docker
+
+    - name: Configure cenmbuild user
+      user:
+        name: cenmbuild
+        password: '{{ cenm_build_password }}'
+        groups: docker
+        shell: /bin/bash
+
+    - name: Add cenmbuild user to sudoers config
+      copy:
+        content: "cenmbuild ALL=(ALL) NOPASSWD: ALL"
+        dest: /etc/sudoers.d/cenmbuild
+
+    - name: Configure bmadm user
+      user:
+        name: bmadm
+        password: '{{ bmadm_password }}'
+        shell: /bin/bash
+
+    - name: Add bmadm user to sudoers config
+      copy:
+        content: "bmadm ALL=(ALL) NOPASSWD: ALL"
+        dest: /etc/sudoers.d/bmadm
+
+    - name: Update permissions on /tmp directory
+      file:
+        dest: /tmp
+        mode: 1777

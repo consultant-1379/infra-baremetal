@@ -1,0 +1,236 @@
+{
+    "bios_settings": {
+        "WorkloadProfile": {
+            "Description": "Select this option to change the Workload Profile to accommodate your desired workload.",
+            "default": "Custom",
+            "valid_values": ["GeneralPowerEfficientCompute", "GeneralPeakFrequencyCompute", "GeneralThroughputCompute", "Virtualization-PowerEfficient",
+                "Virtualization-MaxPerformance", "LowLatency", "MissionCritical", "TransactionalApplicationProcessing", "HighPerformanceCompute(HPC)",
+                "DecisionSupport", "GraphicProcessing", "I/OThroughput", "Custom"]
+        },
+        "BootMode": {
+            "Description": "Sets boot mode of the system",
+            "default": "Uefi",
+            "valid_values": ["Uefi", "LegacyBios"]
+        },
+        "EmbSas1Enable": {
+            "Description": "Disables the smart array controller",
+            "default": "Disabled",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "FCScanPolicy": {
+            "Description": "Scan configured or all FC targets",
+            "default": "AllTargets",
+            "valid_values": ["AllTargets","CardConfig"]
+        },
+        "PciSlot1Enable": {
+            "Description": "Enables or disables HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "PciSlot1LinkSpeed": {
+            "Description": "Enables or disables link speed for HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Auto", "PCIe Generation 1.0", "PCIe Generation 2.0"]
+        },
+        "PciSlot1OptionROM": {
+            "Description": "Enables or disables option ROM for HBA Mezzanine card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "PciSlot2Enable": {
+            "Description": "Enables or disables HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "PciSlot2LinkSpeed": {
+            "Description": "Enables or disables link speed for HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Auto", "PCIe Generation 1.0", "PCIe Generation 2.0"]
+        },
+        "PciSlot2OptionROM": {
+            "Description": "Enables or disables option ROM for HBA Mezzanine card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "PciSlot3Enable": {
+            "Description": "Enables or disables HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "PciSlot3LinkSpeed": {
+            "Description": "Enables or disables link speed for HBA Mezzanine card",
+            "default": "Auto",
+            "valid_values": ["Auto", "PCIe Generation 1.0", "PCIe Generation 2.0"]
+        },
+        "PciSlot3OptionROM": {
+            "Description": "Enables or disables option ROM for HBA Mezzanine card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "FlexLom1Enable": {
+            "Description": "Enable or disable FlexLom1 10Gb Card",
+            "default": "Auto",
+            "valid_values": ["Disabled", "Auto"]
+        },
+        "FlexLom1LinkSpeed": {
+            "Description": "Enable or disable FlexLom1 10Gb Card",
+            "default": "Auto",
+            "valid_values": ["Auto", "PCIe Generation 1.0", "PCIe Generation 2.0"]
+        },
+        "FlexLom1PCIeOptionROM": {
+            "Description": "Enable or disable FlexLom1 10Gb Card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "VirtualInstallDisk": {
+            "Description": "When enabled it may appear as a drive to the OS affecting installs",
+            "default": "Disabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "ProcVirtualization": {
+            "Description": "Virtualization Setting for KVM environments",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "ProcHyperthreading": {
+            "Description": "When enabled each physical processor core operates as two logical processor cores",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "IntelProcVtd": {
+            "Description": "Uses hardware capabilities provided by Intel Virtualization technology for directed I/O",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "Sriov": {
+            "Description": "Enables a hypervisor to create virtual instances of a PCI-express device, potentially increasing performance",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "VirtualSerialPort": {
+            "Description": "Assigns the logical COM port address and associated default resources used by VSP",
+            "default": "Com1Irq4",
+            "valid_values": ["Com2Irq3", "Com1Irq4", "Disabled"]
+        },
+        "ServerName": {
+            "Description": "Server name as displayed in the iLO and BIOS",
+            "default": "%node_host_name%",
+            "valid_values": ["%node_host_name%"]
+        },
+        "PowerRegulator": {
+            "Description": "Select this option to change the power/performance state of the server.",
+            "default": "StaticHighPerf",
+            "valid_values": ["DynamicPowerSavings", "StaticLowPower", "StaticHighPerf", "OsControl"]
+        },
+        "MinProcIdlePower": {
+            "Description": "Select this option to change the the lowest idle power state (C-state) of the processor that the operating system uses.",
+            "default": "NoCStates",
+            "valid_values": ["C6", "C1E", "NoCStates"]
+        },
+        "MinProcIdlePkgState": {
+            "Description": "Select this option to change the lowest idle package package power state (C-state) of the processor.",
+            "default": "NoState",
+            "valid_values": ["C6Retention", "C6NonRetention", "NoState"]
+        },
+        "EnergyPerfBias": {
+            "Description": "Select this option to change processor subsystems to optimize the performance and power usage of the processor.",
+            "default": "MaxPerf",
+            "valid_values": ["MaxPerf", "BalancedPerf", "BalancedPower", "PowerSavingsMode"]
+        },
+        "CollabPowerControl": {
+            "Description": "Select this option to enable the OS to request processor frequency changes on servers with Power Regulator option on and Dynamic Power Savings Mode enabled.",
+            "default": "Disabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "IntelNicDmaChannels": {
+            "Description": "Select this option to enable Intel NIC DMA Channels support.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "HwPrefetcher": {
+            "Description": "Select this option to change the processor HW prefetch feature.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "AdjSecPrefetch": {
+            "Description": "Select this option to change the processor Adjacent Sector Prefetch feature.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "DcuStreamPrefetcher": {
+            "Description": "Select this option to change the processor DCU Stream Prefetcher feature.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "DcuIpPrefetcher": {
+            "Description": "Select this option to change the processor DCU IP Prefetcher feature.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "NumaGroupSizeOpt": {
+            "Description": "Select this option to change how the System BIOS reports the size of a NUMA node",
+            "default": "Clustered",
+            "valid_values": ["Clustered", "Flat"]
+        },
+        "IntelUpiPowerManagement": {
+            "Description": "Select this option to change how the Quick Path Interconnect (UPI) links consume power when the links are not being used.",
+            "default": "Disabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "EnergyEfficientTurbo": {
+            "Description": "Select this option to change the energy policy used when engaging turbo range frequencies.",
+            "default": "Disabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "UncoreFreqScaling": {
+            "Description": "Select this option to change the frequency scaling of the processor's internal busses (the uncore).",
+            "default": "Maximum",
+            "valid_values": ["Auto", "Maximum", "Minimum"]
+        },
+        "IntelDmiLinkFreq": {
+            "Description": "Select this option to change the link speed between the processor and the southbridge.",
+            "default": "Auto",
+            "valid_values": ["Auto", "DmiGen1", "DmiGen2"]
+        },
+        "ProcTurbo": {
+            "Description": "Select this option to enable the processor to transition to a higher frequency than the processor's rated speed.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "MemPatrolScrubbing": {
+            "Description": "Select this option to enable or disable the correcting of memory soft errors.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "MemRefreshRate": {
+            "Description": "Select this option to control the refresh rate of the memory controller.",
+            "default": "Refreshx1",
+            "valid_values": ["Refreshx1", "Refreshx2"]
+        },
+        "SubNumaClustering": {
+            "Description": "Select this option to control the dividing of the processor's cores, cache, and memory into multiple NUMA domains.",
+            "default": "Disabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "ProcX2Apic": {
+            "Description": "Select this option to configure the operating system to optionally enable x2APIC support when it loads.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "ForceEnabled", "Disabled"]
+        },
+        "ChannelInterleaving": {
+            "Description": "Select this option to modify the level of interleaving for which the memory system is configured.",
+            "default": "Enabled",
+            "valid_values": ["Enabled", "Disabled"]
+        },
+        "MaxMemBusFreqMHz": {
+            "Description": "Select this option to to configure the maximum speed at which the memory runs.",
+            "default": "Auto",
+            "valid_values": ["Auto", "MaxMemBusFreq2667", "MaxMemBusFreq2400", "MaxMemBusFreq2133", "MaxMemBusFreq1867"]
+        },
+        "AdvancedMemProtection": {
+            "Description": "Select this option to configure additional memory protection with ECC (Error Checking and Correcting).",
+            "default": "AdvancedEcc",
+            "valid_values": ["FastFaultTolerantADDDC", "AdvancedEcc", "OnlineSpareAdvancedEcc", "MirroredAdvancedEcc"]
+        }
+    }
+}

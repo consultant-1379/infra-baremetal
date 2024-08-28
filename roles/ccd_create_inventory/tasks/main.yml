@@ -1,0 +1,25 @@
+---
+- name: Set variables
+  set_fact:
+    cloud_dir: "deployments/{{ deployment_name }}"
+    inventory_file: "/tmp/ccd_inventory.yml"
+
+- name: Create inventory file on AWX
+  template:
+    src: ccd_inventory.yml.j2
+    dest: "{{ inventory_file }}"
+
+- name: Copy CCD inventory file to kickstart VM
+  copy:
+    src: '{{ inventory_file }}'
+    dest: '/root'
+  delegate_to: kickstart
+
+- name: Import inventory to AWX Tower
+  command: "awx-manage inventory_import --source={{ inventory_file }} --inventory-name={{ deployment_name }}_CCD_deploy --overwrite --overwrite-vars"
+  when: skip_import is not defined
+
+- name: Delete inventory file on AWX
+  file:
+    path: "{{ inventory_file }}"
+    state: absent

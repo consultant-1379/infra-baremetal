@@ -1,0 +1,37 @@
+---
+# DNS Servers
+dns_servers:
+  - 159.107.173.12
+  - 159.107.173.3
+# NTP Servers
+ntp_servers:
+  - 159.107.173.12
+  - 159.107.173.223
+domain_name: athtem.eei.ericsson.se
+timezone: Europe/Dublin
+
+http_proxy: http://atproxy2.athtem.eei.ericsson.se:3128
+
+# Repo Server IP where monitoring images are stored
+repo_ip_address: 10.44.77.158
+
+# Repo web folder where monitoring images are stored. E.g. repo3/monitoring
+repo_folder: repo3/baremetal
+
+# Locatiopn of images on repo server
+full_repo_path: /var/www/html/repo3/baremetal
+
+# MINIO Details
+kube_config: /home/{{ ansible_user }}/.kube/config
+
+minio_access_key: minioadmin
+
+minio_url: http://object.athtem.eei.ericsson.se
+
+minio_secret_key: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          31633363343230393937396136643431353363303837623937343266313838626465363037333661
+          3964333030666334356631393633666338353537663065660a643733636434393138336137643932
+          34616137343231366564346335616433663961333231353665653433393134666165303339366431
+          3035343433386531640a353061353933653663666365393034346534323463656438383939336463
+          3936

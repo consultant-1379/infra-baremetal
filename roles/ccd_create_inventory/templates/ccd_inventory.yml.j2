@@ -1,0 +1,186 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+nodes:
+  children:
+    blades: {}
+    racks: {}
+    {% if is_ceph is defined %}
+    ceph_racks: {}
+    {% endif %}
+  
+  vars: 
+    ansible_user: bmadm
+    ansible_ssh_common_args: " -o StrictHostKeyChecking=no "
+
+ungrouped:
+  hosts:
+    kickstart:
+      ansible_host: {{ dhcp_next_server }}
+      ansible_user: root
+    {% if nfs_nas_ip is defined and nfs_nas_ip != "" %}
+    nas:
+      ansible_host: {{ nfs_nas_ip }}
+      ansible_user: support
+      ansible_ssh_common_args: '-oProxyJump=bmadm@{{ new_nodes[0]["name"] }} -oStrictHostKeyChecking=no -oUserKnownHostsFile=/dev/null'
+      ansible_ssh_pass: '{{ nas_password }}'
+    {% endif %}
+{% if not all_racks %}
+blades:
+{% else %}
+racks:
+{% endif %}
+  hosts:
+    {% for n in new_nodes %}
+    {% if loop.index0 < master_count %}
+    {{ n.name }}-master-{{ loop.index0 }}:
+    {% else %}
+    {{ n.name }}-worker-{{ loop.index0 - 3 }}:
+    {% endif %}
+      ansible_host: {{ pool_start | default(provisioning_pool_start) | ipmath(loop.index0) }}
+      ansible_internal:
+         ipv4:
+           address: {{ internal_pool_start | ipmath(loop.index0) }}
+         {% if network_deployment_type is defined and network_deployment_type == "dualstack" %}
+         ipv6:
+           address: {{ internal_pool_start_ipv6 | ipmath(loop.index0) }}
+         {% endif %}
+      traffic_ip: 
+         ipv4: 
+           address: {{ traffic_pool_start | ipmath(loop.index0) }}
+         {% if network_deployment_type is defined and network_deployment_type == "dualstack" %}
+         ipv6:
+           address: {{ traffic_pool_start_ipv6 | ipmath(loop.index0) }}
+         {% endif %}
+      {% if is_ceph is not defined %}
+      nfs_ip: {{ nfs_pool_start | ipmath(loop.index0) }}
+      {% endif %}
+      {% if storage_protocol_type == 'powerflex' %}
+      storage1_ip: {{ storage1_pool_start | ipmath(loop.index0) }}
+      storage2_ip: {{ storage2_pool_start | ipmath(loop.index0) }}
+      {% endif %}
+      bmc:
+        type: hp
+        ip: {{ n.ilo_ip }}
+        user: '{{ pm_user }}'
+        password: '{{ pm_password }}'
+      mac: {{ n.mac }}
+    {% endfor %}
+{% if is_ceph is defined and is_ceph  %}
+{# ceph_worker_start needs to be set here but not used until the end of the file #}
+{% set ceph_worker_start = new_nodes|length -3 %}
+
+ceph_racks:
+  hosts:
+  {% for n in new_dell_nodes %}
+    {% set i = ceph_worker_start + loop.index0 + master_count %}
+    {{ n.name }}-worker-{{ ceph_worker_start + loop.index0 }}:
+      ansible_host: {{ pool_start | default(provisioning_pool_start) | ipmath(i) }}
+      ansible_internal:
+         ipv4:
+           address: {{ internal_pool_start | ipmath(i) }}
+         {% if network_deployment_type is defined and network_deployment_type == "dualstack" %}
+         ipv6:
+           address: {{ internal_pool_start_ipv6 | ipmath(i) }}
+         {% endif %}
+      cluster_ip: {{ cluster_pool_start | ipmath(loop.index0) }}
+      bmc:
+        type: dell
+        ip: {{ n.ilo_ip }}
+        user: '{{ pm_user }}'
+        password: '{{ pm_password }}'
+      mac: {{ n.mac }}
+    {% endfor %}
+{% endif %}
+
+# Groups and variables for CCD install
+all:
+  vars:
+    nfs_provisioner_enabled: true
+    container_registry_enabled: false
+    ccd_licensing_enabled: false    
+    {% if network_deployment_type is defined and network_deployment_type == "dualstack" %}
+    k8s_ip_version: {{ network_deployment_type }}
+    k8s_pod_cidr: "192.168.0.0/16,2001:db8:ffff:ccd::/64"
+    k8s_service_cidr: "10.96.0.0/12,2002:db8:ffff:ccd::abcd:0/112"
+    calico_ipv6_nat: true
+    ipvs_excluded_cidrs: "{{ traffic_subnet }}/{{ traffic_cidr }},{{ traffic_subnet_ipv6 }}/{{ traffic_cidr_ipv6 }}"
+    {% endif %}
+    kube_apiserver_ip: {{ internal_pool_start | ipmath(-1) }}
+    kube_api_ingress_host: api.{{ deployment_name }}.{{ domain_name }}
+    kube_api_vip_enabled: true
+    ingressctrl_cluster_ip_defined: false
+    keepalived_virtual_router_id: 100
+    kubernetes_interface_override: internal
+    calico_ip_autodetection_method: "interface=internal"
+    dns_server_ips: {{ dns_servers }}
+    pm_monitoring_enabled: false
+    #CCD 2.21 parameter name
+    #pm_victoria_metrics_enabled: false
+    etcd_snapshot_count: 10000
+    etcd_heartbeat_interval: 300
+    etcd_election_timeout: 3000
+    etcd_grpc_keepalive_min_time: 10s
+    timezone: Europe/Dublin
+    {% if worker_vips is not defined %}
+    # ECFE Parameters
+    ecfe_enabled: true
+    ecfe_config_map_raw:
+      bgp-peers:
+      {% for peer_ip in ecfe_peer_addresses %}
+      - peer-address: {{ peer_ip}}
+        peer-asn: {{ ecfe_remote_asn |default('4247257098') }}
+        my-asn: {{ ecfe_local_asn |default('4247257108') }}
+      {% endfor %}
+      address-pools:
+      - name: default
+        protocol: bgp
+        addresses:
+        {% for ip in ecfe_ip_addresses %}
+        - {{ ip + '-' + ip }}
+        {% endfor %}
+    {% endif %}{# End if worker_vips is not defined #}
+
+etcd:
+  hosts:
+    {% for n in nodes %}
+    {% if loop.index0 < master_count %}
+    {{ n.name }}-master-{{ loop.index0 }}:
+    {% endif %}
+    {% endfor %}
+
+master:
+  hosts:
+    {% for n in nodes %}
+    {% if loop.index0 < master_count %}
+    {{ n.name }}-master-{{ loop.index0 }}:
+    {% endif %}
+    {% endfor %}
+
+worker:
+  hosts:
+    {% for n in nodes %}
+    {% if loop.index0 >= master_count %}
+    {{ n.name }}-worker-{{ loop.index0 - 3 }}:
+    {% endif %}
+    {% endfor %}
+
+{% if is_ceph is defined and is_ceph %}
+# Ceph storage hosts
+storage_mon:
+  hosts:
+    {% for n in new_dell_nodes[:3] %}
+    {{ n.name }}-worker-{{ ceph_worker_start + loop.index0 }}:
+    {% endfor %}
+
+storage_osd:
+  hosts:
+    {% for n in new_dell_nodes[3:] %}
+    {{ n.name }}-worker-{{ ceph_worker_start + 3 + loop.index0 }}:
+    {% endfor %}
+{% endif %}
+
+{% if worker_vips is defined %}
+ccm_lb:
+  hosts:
+    {{new_nodes[master_count+2].name}}-worker-2:
+    {{new_nodes[master_count+3].name}}-worker-3:
+{% endif %}

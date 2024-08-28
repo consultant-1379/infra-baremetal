@@ -1,0 +1,33 @@
+dependencies:
+- name: pmfilebench
+  repository: file://../pmfilebench/
+  version: 0.1.0
+- name: pmfilebench
+  repository: file://../pmfilebench/
+  version: 0.1.0
+- name: pmfilebench
+  repository: file://../pmfilebench/
+  version: 0.1.0
+- name: pmfilebench
+  repository: file://../pmfilebench/
+  version: 0.1.0
+- name: pmfilebench
+  repository: file://../pmfilebench/
+  version: 0.1.0
+- name: eric-enm-rwxpvc-loaddir
+  repository: file://../rwxpvc-loaddirs/
+  version: 1.0.1
+- name: eric-enm-rwxpvc-loaddir
+  repository: file://../rwxpvc-loaddirs/
+  version: 1.0.1
+- name: eric-enm-rwxpvc-loaddir
+  repository: file://../rwxpvc-loaddirs/
+  version: 1.0.1
+- name: eric-enm-rwxpvc-loaddir
+  repository: file://../rwxpvc-loaddirs/
+  version: 1.0.1
+- name: eric-enm-rwxpvc-loaddir
+  repository: file://../rwxpvc-loaddirs/
+  version: 1.0.1
+digest: sha256:9566cd3db785158e182ae5cc7d6c221761252feb7b576a8dc3e6f5c504631210
+generated: 2020-05-22T05:38:24.115645432-04:00

@@ -1,0 +1,16 @@
+STARTMODE=auto
+BOOTPROTO=static
+BONDING_MASTER=yes
+{% if inventory_hostname in groups["ceph_racks"] %}
+BONDING_SLAVE_0={{ if_list[0] }}
+BONDING_SLAVE_1={{ if_list[1] }}
+{# racks have 2 tier mlag - need xmit_hash_policy set #}
+BONDING_MODULE_OPTS='mode=4 miimon=100 xmit_hash_policy=layer3+4'
+{% else %}
+{# First 2 interfaces in the blades are used in bond0 on blades. So use the next 2 interfaces
+for bond1 #}
+BONDING_SLAVE_0={{ if_list[2] }}
+BONDING_SLAVE_1={{ if_list[3] }}
+BONDING_MODULE_OPTS='mode=4 miimon=100'
+{% endif %}
+MTU=9000

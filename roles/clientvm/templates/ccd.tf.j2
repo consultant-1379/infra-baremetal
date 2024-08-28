@@ -1,0 +1,89 @@
+# Define required providers
+terraform {
+required_version = ">= 0.14.0"
+  required_providers {
+    openstack = {
+      source  = "terraform-provider-openstack/openstack"
+      version = "~> 1.35.0"
+    }
+  }
+}
+
+variable "deployment_name" {
+  type = string
+  default = "{{ deployment_name }}"
+}
+
+variable "network" {
+  type = string
+  default = "{{ network }}"
+}
+
+variable "ccd_floating_ip" {
+  type = string
+  {% if deployment_type == "baremetal" %}
+  default = "{{ floating_ips[deployment_name].floating_ip }}"
+  {% else %}
+  default = "{{ floating_ips[vm_name].floating_ip }}"
+  {% endif %}
+}
+
+variable "ccd_fixed_ip" {
+  type = string
+  {% if deployment_type == "baremetal" %}
+  default = "{{ floating_ips[deployment_name].fixed_ip }}"
+  {% else %}
+  default = "{{ floating_ips[vm_name].fixed_ip }}"
+  {% endif %}
+}
+
+# Configure the OpenStack Provider
+provider "openstack" {
+  cloud       = "devstack"
+}
+
+data "openstack_images_image_v2" "ccd_client" {
+  name        = "{{ output_image }}"
+}
+
+data "openstack_compute_keypair_v2" "ccd-keypair" {
+  name = "{{ keypair_name }}"
+}
+
+data "openstack_networking_secgroup_v2" "ccd_client_security_group" {
+  name = "{{ security_group }}"
+}
+
+data "openstack_compute_flavor_v2" "ccd_client_flavor" {
+  name = "{{ flavor.name }}"
+}
+
+data "openstack_networking_floatingip_v2" "ccd_floating_ip" {
+  address = "${var.ccd_floating_ip}"
+}
+resource "openstack_compute_instance_v2" "ccd_client_vm" {
+  name            = "{{ vm_name }}"
+  flavor_id       = "${data.openstack_compute_flavor_v2.ccd_client_flavor.id}"
+  key_pair        = "${data.openstack_compute_keypair_v2.ccd-keypair.name}"
+  security_groups = ["${data.openstack_networking_secgroup_v2.ccd_client_security_group.name}"]
+
+  block_device {
+    uuid                  = "${data.openstack_images_image_v2.ccd_client.id}"
+    source_type           = "image"
+    volume_size           = 200
+    boot_index            = 0
+    destination_type      = "volume"
+    delete_on_termination = true
+  }
+
+  network {
+    name        = "${var.network}"
+    fixed_ip_v4 = "${var.ccd_fixed_ip}"
+  }
+}
+
+resource "openstack_compute_floatingip_associate_v2" "floating_ip_associate" {
+  floating_ip = "${data.openstack_networking_floatingip_v2.ccd_floating_ip.address}"
+  instance_id = "${openstack_compute_instance_v2.ccd_client_vm.id}"
+  fixed_ip    = "${openstack_compute_instance_v2.ccd_client_vm.network.0.fixed_ip_v4 }"
+}

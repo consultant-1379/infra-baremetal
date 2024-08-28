@@ -1,0 +1,39 @@
+- name: Restart wicked
+  systemd:
+    name: wicked
+    state: restarted
+  async: 60
+  poll: 0
+  listen: restart_wicked
+  register: wicked_result
+  when: netcfg.changed
+
+- name: Wicked check async task
+  async_status:
+    jid: "{{ wicked_result.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 30
+  listen: restart_wicked
+  when: netcfg.changed
+
+
+# for kickstart network restart
+- name: Restart network service
+  systemd:
+    name: network
+    state: restarted
+  async: 60
+  poll: 0
+  listen: ks_route_updated
+  register: network_result
+  when: ks_route.changed
+
+- name: Network check async task
+  async_status:
+    jid: "{{ network_result.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 30
+  listen: ks_route_updated
+  when: ks_route.changed

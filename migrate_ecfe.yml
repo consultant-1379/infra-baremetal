@@ -1,0 +1,159 @@
+---
+- hosts: master
+  gather_facts: no
+  tags: ccm_purge
+  tasks:
+    - name: Remove CCM from the CCD deployment (deployments, replicaset, pods, config map are removed)
+      block:
+        - name: Delete EWS CCM Deployment
+          shell: 'kubectl delete deployment ews-ccm -n kube-system'
+
+        - name: Delete EWS CCM Replica Set
+          shell: 'kubectl delete rs -l app=ews-ccm -n kube-system'
+
+        - name: Delete EWS CCM ClusterRoleBinding
+          shell: 'kubectl delete clusterrolebinding ews-ccm'
+
+        - name: Delete EWS CCM Service Account
+          shell: 'kubectl delete sa ews-ccm -n kube-system'
+
+        - name: Delete EWS CCM Config Map
+          shell: 'kubectl delete cm ewsccm-cm -n kube-system'
+      run_once: yes
+
+- hosts: ccm_lb
+  gather_facts: no
+  become: yes
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  tasks:
+    - name: Stop & disable keepalived service
+      systemd:
+        name: keepalived
+        state: stopped
+        enabled: no
+    - name: Remove keepalived configuration
+      file:
+        path: /etc/keepalived/keepalived.conf
+        state: absent
+  
+- hosts: kickstart
+  gather_facts: no
+  become: yes
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  tasks:
+    - name: Find CCD directory
+      find:
+        path: /var/
+        file_type: directory
+        use_regex: yes
+        recurse: yes
+        patterns:
+          - '^eccd'
+      register: find_ccd_install_dir
+
+    - name: Save path to CCD ansible/erikube directory
+      set_fact:
+        eccd_install_dir: "{{ find_ccd_install_dir.files | map(attribute='path') | first }}/ansible/erikube"
+
+    - name: Deploy ecfe to CCD deployment
+      shell: "export ANSIBLE_LOG_PATH=/root/$(date '+%Y%m%d%H%M%S')-ecfe_deploy_ansible.log; ansible-playbook -i /root/ccd_inventory.yml playbooks/ecfe-deploy.yml"
+      args:
+        chdir: '{{ eccd_install_dir }}'
+
+- hosts: localhost
+  gather_facts: no
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  tasks:
+    - name: Update services with loadBalancerIP
+      block:
+        - name: "Download {{ deployment_name }} kubernetes config file from MinIO bucket"
+          aws_s3:
+            aws_access_key: "{{ minio_access_key }}"
+            aws_secret_key: "{{ minio_secret_key }}"
+            s3_url: "{{ minio_url }}"
+            encrypt: no
+            bucket: de-cni
+            object: "/ccd/{{ deployment_name }}/{{ deployment_name }}.admin.conf"
+            dest: "/tmp/{{ deployment_name }}.admin.conf"
+            mode: get
+            ignore_nonexistent_bucket: True
+
+        - name: Get a list of namespaces
+          kubernetes.core.k8s_info:
+            kind: Namespace
+          register: ns
+  
+        - name: Set DNS server
+          set_fact:
+            dns_server: '{{ dns_servers| first }}'
+
+        - name: Update ENM external ingress controller service
+          block:
+            - name: Set ENM namespace
+              set_fact:
+                enm_ns: '{{ ns.resources | map(attribute="metadata") |map(attribute="name") |select("match","^enm") | first }}'
+
+            - name: Get uiserv Ingress
+              kubernetes.core.k8s_info:
+                kind: Ingress
+                namespace: '{{ enm_ns }}'
+                name: uiserv
+              register: cenm_ing_result
+
+            - name: Get cENM domain names
+              set_fact:
+                cenm_domain: '{{ cenm_ing_result.resources| map(attribute="spec.rules")| flatten | map(attribute="host")| first }}' 
+
+            - debug:
+                msg: "{{ lookup('dig', cenm_domain, '@' + dns_server)}} => {{ cenm_domain }}"
+
+            - name: Update loadBalancerIP for cENM ingress controller
+              kubernetes.core.k8s:
+                state: patched
+                kind: Service
+                name: eric-oss-ingress-controller-nx-external
+                namespace: '{{ enm_ns }}'
+                definition:
+                  spec:
+                    loadBalancerIP: "{{ lookup('dig', cenm_domain, '@' + dns_server) }}"
+                    externalTrafficPolicy: Local
+          tags:
+            - enm
+
+        - name: Update Kubernetes API service
+          block:
+            - name: Get Kubernetes API Ingress
+              kubernetes.core.k8s_info:
+                kind: Ingress
+                namespace: kube-system
+                name: kubernetes-api
+              register: api_ing_result
+
+            - name: Get Kubernetes API domain name
+              set_fact:
+                api_domain: '{{ api_ing_result.resources| map(attribute="spec.rules")| flatten | map(attribute="host")| first }}' 
+
+            - debug:
+                msg: "{{ lookup('dig', api_domain, '@' + dns_server)}} => {{ api_domain }}"
+
+            - name: Update loadBalancerIP for CCD ingress controller
+              kubernetes.core.k8s:
+                state: patched
+                kind: Service
+                name: ingress-nginx
+                namespace: ingress-nginx
+                definition:
+                  spec:
+                    loadBalancerIP: "{{ lookup('dig', api_domain, '@' + dns_server) }}"
+          tags:
+            - api
+        
+      environment:
+        K8S_AUTH_KUBECONFIG: "/tmp/{{ deployment_name }}.admin.conf"
+

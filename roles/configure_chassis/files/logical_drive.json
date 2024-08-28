@@ -1,0 +1,18 @@
+{
+    "DataGuard": "Disabled",
+    "LogicalDrives": [
+       {
+          "CapacityGiB": 894,
+          "Raid": "Raid1",
+          "StripSizeBytes": 262144,
+          "StripeSizeBytes": 524288,
+          "LogicalDriveName": "OS Root disk",
+          "DataDrives": [
+                "1I:1:1",
+                "1I:1:2"
+          ],
+          "SpareDrives": [],
+          "Accelerator": "ControllerCache" 
+       }
+    ]
+}

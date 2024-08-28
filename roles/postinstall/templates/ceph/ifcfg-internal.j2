@@ -1,0 +1,7 @@
+STARTMODE=auto
+BOOTPROTO=static
+IPADDR={{ ansible_internal.ipv4.address }}/{{ internal_cidr }}
+ETHERDEVICE=bond1
+VLAN_ID={{ internal_vlan_id }}
+VLAN=yes
+MTU=9000

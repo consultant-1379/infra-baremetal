@@ -1,0 +1,26 @@
+---
+- name: Set variables
+  set_fact:
+    cloud_dir: "{{ topdir }}/deployments/{{ bm_deployment_name }}"
+
+- name: "Create {{ bm_deployment_name }} directory"
+  file:
+    state: directory
+    path:  "{{ cloud_dir }}"
+    mode: 0755
+
+- name: "Create {{ bm_deployment_name }}.yml variables"
+  template:
+    src: bmccdX.yml.j2
+    dest: "{{ cloud_dir }}/{{ bm_deployment_name }}.yml"
+    mode: 0644
+
+- name: "Create infra_inventory.yml"
+  template:
+    src: infra_inventory.yml.j2
+    dest: "{{ cloud_dir }}/infra_inventory.yml"
+
+- name: "Create passwords.yml"
+  template:
+    src: passwords.yml.j2
+    dest: "{{ cloud_dir }}/passwords.yml"

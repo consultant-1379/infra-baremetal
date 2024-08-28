@@ -1,0 +1,34 @@
+global:
+  repository: armdocker.rnd.ericsson.se/proj_oss_releases/enm/pmfilebench
+  storageClass: rook-cephfs
+  loaddirSize: 1Gi
+  command: "['java','-cp', '/pmfilebench/*', '-DlowThreads=1050', '-DhighThreads=109', '-Diotest.length=4320', '-DprocessNodeB=true', '-DprometheusPort=9090', 'writer.IoWriter', '/loaddir/', '/pmfilebench/test_LTE.xml']"
+eric-enm-rwxpvc-loaddir-1:
+  enabled: true
+
+eric-enm-rwxpvc-loaddir-2:
+  enabled: true
+
+eric-enm-rwxpvc-loaddir-3:
+  enabled: false
+
+eric-enm-rwxpvc-loaddir-4:
+  enabled: false
+
+eric-enm-rwxpvc-loaddir-5:
+  enabled: false
+
+pmfilebench-1:
+  enabled: true
+
+pmfilebench-2:
+  enabled: true
+
+pmfilebench-3:
+  enabled: false
+
+pmfilebench-4:
+  enabled: false
+
+pmfilebench-5:
+  enabled: false

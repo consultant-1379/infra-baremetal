@@ -1,0 +1,55 @@
+global:
+  repository: 
+  storageClass: nfs-enm21
+  loaddirSize: 
+
+eric-enm-rwxpvc-loaddir-1:
+  enabled: false
+  rwx:
+    loaddirName: loaddir-1
+
+eric-enm-rwxpvc-loaddir-2:
+  enabled: false
+  rwx:
+    loaddirName: loaddir-2
+
+eric-enm-rwxpvc-loaddir-3:
+  enabled: false
+  rwx:
+    loaddirName: loaddir-3
+
+eric-enm-rwxpvc-loaddir-4:
+  enabled: false
+  rwx:
+    loaddirName: loaddir-4
+
+eric-enm-rwxpvc-loaddir-5:
+  enabled: false
+  rwx:
+    loaddirName: loaddir-5
+
+pmfilebench-1:
+  enabled: true
+  volumes:
+    loaddirVolumeName: loaddir-1
+
+pmfilebench-2:
+  enabled: false
+  volumes:
+    loaddirVolumeName: loaddir-2
+
+pmfilebench-3:
+  enabled: false
+  volumes:
+    loaddirVolumeName: loaddir-3
+
+pmfilebench-4:
+  enabled: false
+  volumes:
+    loaddirVolumeName: loaddir-4
+
+pmfilebench-5:
+  enabled: false
+  volumes:
+    loaddirVolumeName: loaddir-5
+

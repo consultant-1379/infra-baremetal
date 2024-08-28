@@ -1,0 +1,120 @@
+---
+
+# Deployment Name
+deployment_name: bmccd3
+
+# Number of master nodes
+master_count: 3
+
+# Re-use existing packer image for KS - set variable to reuse
+# Build new pack image for KS - set variable to new
+reuse_ks_image: reuse
+
+# ILO Network Details
+ilo_cidr: 24
+ilo_subnet: 10.232.179.0
+ilo_netmask: 255.255.255.0
+
+# PXE Network Details
+provisioning_cidr: 25
+provisioning_subnet: 10.232.210.0
+provisioning_netmask: 255.255.255.128
+provisioning_gateway: 10.232.210.1
+provisioning_pool_start: 10.232.210.12
+provisioning_vlan_id: 621
+# Provisioning IP - assigned to physical host
+provisioning_phost_ip: 10.232.210.10
+# BM Kickstart VM IP - used for DHCP
+dhcp_next_server: 10.232.210.11
+
+# Internal Network Details
+internal_cidr: 25
+internal_subnet: 10.232.211.128
+internal_gateway: 10.232.211.129
+internal_pool_start: 10.232.211.139
+internal_cidr_ipv6: 64
+internal_subnet_ipv6: "2001:1b70:82b9:e4::"
+internal_gateway_ipv6: "2001:1b70:82b9:e4::1"
+internal_pool_start_ipv6: "2001:1b70:82b9:e4::7"
+internal_vlan_id: 624
+
+# Provider / Traffic Network Details
+traffic_cidr: 25
+traffic_subnet: 10.232.210.128
+traffic_gateway: 10.232.210.129
+traffic_pool_start: 10.232.210.139
+traffic_cidr_ipv6: 64
+traffic_subnet_ipv6: "2001:1b70:82b9:e2::"
+traffic_gateway_ipv6: "2001:1b70:82b9:e2::1"
+traffic_pool_start_ipv6: "2001:1b70:82b9:e2::7"
+traffic_vlan_id: 622
+
+# NFS Network Details
+nfs_cidr: 25
+nfs_subnet: 10.232.211.0
+nfs_gateway: 10.232.211.1
+nfs_pool_start: 10.232.211.10
+nfs_vlan_id: 623
+
+# Public IP assigned to physical host
+physical_host_ip: 10.32.132.136
+
+# virsh storage pool name to deploy kickstart VM E.g. faststore or default
+virsh_storage_pool: faststore
+
+# Set 'all_racks' to True if this deployment is an all rack deployment
+all_racks: no
+
+# Set to yes if Smart Array Controller is present in server, otherwise set to no
+has_smartarray: yes
+
+# Slot of the NIC to use for PXE boot
+# e.g. set to 1 to use the NIC in PCI slot 1 or Embedded if NIC is Embedded
+nic_slot: Embedded
+
+# Rack names - E.g. Tipperary 12a/10*16
+rack_names:
+  - "ieat01_00-21_05_005"
+# OA IP & cloud user credentials
+oa_ips:
+- 10.232.179.57
+pm_user: cloud
+# pm_password - deployments/bmccd2/passwords.yml
+storage_protocol_type: fc
+
+# Set to true if using passthrough modules else false if using FC sanswitch
+passthrough: false
+
+
+# DELL Unity Storage Details
+
+# FQDN of the storage array
+unity_host: ieatunity-03.athtem.eei.ericsson.se
+# Serial Number of the Unity storage array i.e. CKM00123...
+unity_serial: CKM00185100917
+# Service Account Username
+unity_user: ostkadm
+# Name of the Pool providing the storage
+unity_pool: bmccd3_rwo
+# CLI ID of the storage pool
+unity_pool_id: pool_14
+
+# The size of the root disk/boot LUN for each server.
+size: 150
+
+
+# NAS Settings
+nfs_nas_ip: 10.232.211.8
+nfs_nas_share: /vx/bmccd3fs
+
+# ECFE Configuration
+ecfe_peer_addresses:
+  - 10.232.210.132
+  - 10.232.210.133
+  - 2001:1b70:82b9:e2::4
+  - 2001:1b70:82b9:e2::5
+ecfe_ip_addresses:
+  - 10.150.22.132
+  - 10.150.22.133
+  - 2001:1b70:82b9:139::10
+  - 2001:1b70:82b9:139::11

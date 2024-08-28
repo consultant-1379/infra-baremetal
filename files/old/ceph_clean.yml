@@ -1,0 +1,31 @@
+---
+
+# - hosts: master[0]
+#   gather_facts: False
+#   become: yes
+#   roles:
+#     - name: Remove Ceph
+#       role: rook_ceph
+#       vars:
+#         storage_osd_nodes: "{{ groups.storage_osd | mandatory }}"
+#         storage_mon_nodes: "{{ groups.storage_mon | mandatory }}"
+#       tags:
+#         - cleanup
+# for CRD in $(kubectl get crd -n rook-ceph | awk '/ceph.rook.io/ {print $1}'); do kubectl patch crd -n rook-ceph $CRD --type merge -p '{"metadata":{"finalizers": [null]}}'; done
+
+# - hosts: storage_osd + storage_mon
+- hosts: all
+  gather_facts: False
+  become: yes
+  tasks:
+    - name: Remove Rook dir
+      file:
+        path: /var/lib/rook
+        state: absent
+
+- hosts: storage_osd
+  gather_facts: False
+  become: yes
+  roles:
+    - name: Cleanup Ceph OSDs
+      role: ceph_clean_osd

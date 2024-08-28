@@ -1,0 +1,24 @@
+---
+- hosts: localhost
+  gather_facts: no
+  pre_tasks:
+    - name: Create vyos_vm_list
+      set_fact:
+        vyos_vm_list: '{{ vyos_vm_list| default([]) + [ item ] }}'
+      loop:
+        - '{{ vyos_vm1 }}'
+        - '{{ vyos_vm2 }}'
+    - name: Check VyOS VM names are in DNS
+      assert:
+        that: ip is defined and ip != "" and ip != "NXDOMAIN"
+        fail_msg: '"{{ ip }}" is an undefined variable, empty string or cannot be resolved in DNS'
+      vars:
+        ip: '{{ lookup("dig", item,"@" + dns_servers| join(",")) }}'
+      loop: '{{ vyos_vm_list }}'
+    - name: Set pod name and cloud name
+      set_fact:
+        pod: '{{ (northbound_vlan_name| lower).split("-") |first }}'
+        cloud: '{{ (cloud | lower).split(".") |first }}'
+         
+  roles:
+    - vyos

@@ -1,0 +1,9 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+DEVICE=bond0.{{ provisioning_vlan_id }}
+NAME=bond0.{{ provisioning_vlan_id }}
+BOOTPROTO=none
+ONPARENT=yes
+ONBOOT=yes
+VLAN=yes
+BRIDGE={{ deployment_name }}_pxe
+NM_CONTROLLED=no

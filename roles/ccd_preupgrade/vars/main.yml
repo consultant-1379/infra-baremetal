@@ -1,0 +1,40 @@
+repo_base_url: https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SLE15/
+repos:
+  - SLE-15-SP2-Module-Basesystem
+  - SLE-15-SP2-Module-Development-Tools
+  - SLE-15-SP2-Product-SLES
+  - SLE-15-SP2-Module-Basesystem-Updates
+  - SLE-15-SP2-Module-Containers
+  - SLE-15-SP2-Module-Containers-Updates
+sles15sp2_img: SLE-15-SP2-Full-x86_64-GMC-Media1.iso
+
+old_repos:
+  - SLE-15-SP1-Module-Basesystem
+  - SLE-15-SP1-Module-Development-Tools
+  - SLE-15-SP1-Product-SLES
+  - SLE-15-SP1-Module-Basesystem-Updates
+  - SLE-15-SP1-Module-Containers
+  - SLE-15-SP1-Module-Containers-Updates
+  - SLES15-SP1-15.1-0_0
+  - Server-Applications-Module-15.1-0
+  - Basesystem-Module-15.1-0
+  - Backports
+
+sp2_product_subscriptions:
+  - sle-module-basesystem/15.1/x86_64
+  - PackageHub/15.1/x86_64
+  - sle-module-python2/15.1/x86_64
+  - sle-module-containers/15.1/x86_64
+  - sle-module-public-cloud/15.1/x86_64
+  - sle-module-desktop-applications/15.1/x86_64
+  - sle-module-development-tools/15.1/x86_64
+
+
+# sp2_product_subscriptions:
+#   - sle-module-basesystem/15.2/x86_64
+#   - PackageHub/15.2/x86_64
+#   - sle-module-python2/15.2/x86_64
+#   - sle-module-containers/15.2/x86_64
+#   - sle-module-public-cloud/15.2/x86_64
+#   - sle-module-desktop-applications/15.2/x86_64
+#   - sle-module-development-tools/15.2/x86_64

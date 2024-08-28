@@ -1,0 +1,32 @@
+---
+- name: Create Persistent Volumes in K8s
+  block:
+    - name: "Download {{ deployment_name }} kubernetes config file from MinIO bucket"
+      aws_s3:
+        aws_access_key: "{{ minio_access_key }}"
+        aws_secret_key: "{{ minio_secret_key }}"
+        s3_url: "{{ minio_url }}"
+        encrypt: no
+        bucket: de-cni
+        object: "/ccd/{{ deployment_name }}/{{ deployment_name }}.admin.conf"
+        dest: "/tmp/{{ deployment_name }}.admin.conf"
+        mode: get
+        ignore_nonexistent_bucket: True
+
+    - name: Create PV in K8s
+      kubernetes.core.k8s:
+        state: present
+        definition: "{{ lookup('template','nfs-pv.yml.j2') }}"
+      vars:
+        pv_name: "{{ deployment_name }}-{{ item.name }}"
+        pvc_name: "{{ item.name }}"
+        pv_size: "{{ [item.size|round|int,'Gi'] | join('') }}"
+      loop: '{{ persistent_volumes }}'
+      environment:
+        K8S_AUTH_KUBECONFIG: "/tmp/{{ deployment_name }}.admin.conf"
+
+    - name: Cleanup KUBECONFIG file
+      file:
+        path: "/tmp/{{ deployment_name }}.admin.conf"
+        state: absent
+  delegate_to: localhost

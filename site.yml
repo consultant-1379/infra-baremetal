@@ -1,0 +1,49 @@
+---
+- hosts: nodes
+  gather_facts: False
+  become: yes
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  vars:
+    sp_version_map:
+      2.22: SP3
+      2.23: SP3
+      2.24: SP4
+      2.25: SP4
+      2.26: SP4
+      2.27: SP4
+  pre_tasks:
+    - name: set SLES 15 SP version
+      set_fact:
+        sp_version: "{{ sp_version_map[ccd_install_version] }}"
+      run_once: yes
+  roles:
+    - name: Prepare DHCP for PXE install
+      role: pxe_dhcp
+      delegate_to: kickstart
+      run_once: true
+      tags:
+        - pxe
+    - name: Install SLES using PXE boot
+      role: pxe_install
+      delegate_to: localhost
+      run_once: true
+      vars:
+        servers: "{{ groups.nodes }}"
+      tags:
+        - install
+    - name: Run postinstall configuration
+      role: postinstall
+      tags:
+        - postinstall
+    - name: Install CCD
+      role: ccd_install
+      tags:
+        - ccd_install
+      delegate_to: kickstart
+      run_once: yes
+    - name: Run ccd_post configuration
+      role: ccd_post
+      tags:
+        - ccd_post

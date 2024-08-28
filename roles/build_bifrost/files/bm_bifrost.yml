@@ -1,0 +1,28 @@
+---
+- hosts: bm_bifrost_vm
+  tasks:
+    - name: Create resolv.conf
+      copy:
+        content: |
+          nameserver 10.0.2.3
+          search ericsson.se athtem.eei.ericsson.se
+        dest: /etc/resolv.conf
+    - name: Install dependencies
+      package:
+        name: '{{ item }}'
+        state: present
+      loop:
+        - python3
+        - git
+        - vim
+        - tmux
+        - lsof
+        - jq
+    - name: Clone bifrost repo
+      git:
+        repo: https://opendev.org/openstack/bifrost
+        dest: /root/bifrost
+    - name: Checkout the Yoga branch
+      shell: git checkout stable/yoga
+      args:
+        chdir: /root/bifrost/

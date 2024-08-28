@@ -1,0 +1,19 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+  name: powerflex
+provisioner: csi-vxflexos.dellemc.com
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+
+parameters:
+  storagepool: {{ powerflex_pool }}   #Insert Storage pool.
+  systemID: {{ powerflex_serial }}         #Insert System ID
+allowedTopologies:
+- matchLabelExpressions:
+  - key: csi-vxflexos.dellemc.com/{{ powerflex_serial }}   #Insert System ID
+    values:
+    - csi-vxflexos.dellemc.com

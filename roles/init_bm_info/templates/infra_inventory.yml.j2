@@ -1,0 +1,17 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+infra:
+  hosts:
+    phost:
+      ansible_host: 
+      ansible_user: root
+    kickstart:
+      ansible_host: 
+      ansible_user: root
+    {% if storage_type == '3par' %}
+    hpe_3par:
+      ansible_host: 
+      ansible_user: ostkadm
+      ansible_ssh_pass: '{{ hpe3par_password }}'
+    {% endif %}
+  vars:
+    ansible_ssh_common_args: " -o StrictHostKeyChecking=no "

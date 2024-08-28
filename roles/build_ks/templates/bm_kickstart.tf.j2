@@ -1,0 +1,59 @@
+resource "libvirt_volume" "{{ kickstart_shortname }}_vol"{
+  name = "{{ kickstart_shortname }}_vol"
+  base_volume_id = libvirt_volume.bm_ks_base.id
+  pool = "{{ virsh_storage_pool }}"
+}
+resource "libvirt_volume" "bm_ks_base"{
+  name = "{{ ks_img_name }}"
+  pool = "{{ virsh_storage_pool }}"
+  format = "qcow2"
+}
+# Use CloudInit to add our ssh-key to the instance
+resource "libvirt_cloudinit_disk" "{{ kickstart_shortname }}_cloudinit_disk" {
+  name = "{{ kickstart_shortname }}_cloudinit_disk"
+  pool = "{{ virsh_storage_pool }}"
+  user_data = <<EOF
+#cloud-config
+chpasswd:
+  expire: False
+  list:
+    - root:$6$E51mzxRrIpCT/zIj$Q8bGio97MfBli36vN91W4.BRr2f9KPKiZB3ofK/naO8B8jWetsZTUYj6otKIIY29XPWuKpoF1g6Cbd3ok8vo51
+
+local-hostname: "{{ kickstart_shortname }}"
+disable_root: 0
+ssh_pwauth: 1
+users:
+  - name: root
+runcmd:
+  - sed -i -e 's/^UseDNS.*/UseDNS no/g' /etc/ssh/sshd_config
+  - systemctl restart sshd
+ssh_authorized_keys:
+  - {{ lookup("file", "awx_ssh.pub")}}
+EOF
+network_config = file("bm_kickstart_net_config")
+meta_data = <<EOF
+instance-id: "{{ kickstart_shortname }}-001"
+local-hostname: "{{ kickstart_shortname }}"
+EOF
+}
+
+resource "libvirt_domain" "{{ kickstart_shortname }}" {
+  name = "{{ kickstart_shortname }}"
+  memory = "8192"
+  vcpu = 4
+  network_interface {
+    bridge= var.prov_bridge
+
+  }
+  cloudinit = libvirt_cloudinit_disk.{{ kickstart_shortname }}_cloudinit_disk.id
+  disk {
+   volume_id = libvirt_volume.{{ kickstart_shortname }}_vol.id
+  }
+  video {
+    type = "vga"
+  }
+  graphics {
+    type = "vnc"
+    listen_type = "address"
+ }
+}

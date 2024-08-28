@@ -1,0 +1,13 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-test-pvc
+  namespace: kube-system
+spec:
+  storageClassName: nfs-{{ deployment_name }}
+  resources:
+    requests:
+      storage: 20Gi
+  accessModes:
+    - ReadWriteMany

@@ -1,0 +1,265 @@
+---
+- name: Clean up K8s conf file from /tmp
+  file:
+    path: "/tmp/{{ deployment_name }}.admin.conf"
+    state: absent
+  delegate_to: localhost
+  run_once: yes
+
+- name: Copy admin.conf and enable metric collection
+  block:
+    - name: Copy kubernetes config to bmadm
+      copy:
+        src: '/etc/kubernetes/admin.conf'
+        dest: '/home/{{ item }}/.kube/config'
+        remote_src: yes
+        owner: '{{ item }}'
+        group: 'users'
+        mode: '0600'
+      loop:
+        - bmadm
+
+    - name: Enable listen on all interfaces to allow metrics collection
+      lineinfile:
+        state: present
+        path: "{{ item }}"
+        backrefs: yes
+        regex: '^(\s*- --bind-address)=[\d\.]+$'
+        line: '\1=0.0.0.0'
+      loop:
+        - /etc/kubernetes/manifests/kube-scheduler.yaml
+        - /etc/kubernetes/manifests/kube-controller-manager.yaml
+  become: yes
+  when: inventory_hostname in groups["master"]
+
+- name: Set sysctl settings and copy multipath.conf (worker nodes only)
+  block:
+    - name: Create /etc/modules-load.d/lvs.conf
+      copy:
+        src: lvs.conf
+        dest: /etc/modules-load.d/
+      
+    - name: Load ip_vs module
+      modprobe:
+        state: present
+        name: ip_vs
+        
+    - name: Set sysctl settings (worker nodes only)
+      sysctl:
+        name: '{{ setting.name }}'
+        value: '{{ setting.value }}'
+        sysctl_set: yes
+      loop: '{{ worker_sysctl_settings }}'
+      loop_control:
+        loop_var: setting
+        label: '{{ setting.name }}'
+
+    - name: Copy multipath.conf to /etc/ directory (worker nodes only)
+      copy:
+        src: '{{ "unity_" if unity_host is defined else ""}}multipath.conf'
+        dest: /etc/multipath.conf
+        owner: 'root'
+        group: 'root'
+        mode: '0444'
+        backup: yes
+        force: yes
+      when: unity_host is defined or hpe3par_ip is defined
+  become: yes
+  when: inventory_hostname in groups["worker"]
+
+- name: Copy K8s conf file to /tmp
+  fetch:
+    src: "/home/{{ ansible_user }}/.kube/config"
+    dest: "/tmp/{{ deployment_name }}.admin.conf"
+    flat: yes
+  delegate_to: '{{ groups["master"] |first }}'
+  run_once: yes
+
+- name: Set permisssions on K8s conf file
+  file:
+    path: "/tmp/{{ deployment_name }}.admin.conf"
+    mode: 0600
+  run_once: yes
+  delegate_to: localhost
+
+- name: Upload K8s conf file to MinIO
+  include_tasks: minio.yml
+
+- name: Generate PowerFlex UUID
+  shell: "uuidgen --name {{ inventory_hostname }} --sha1 --namespace @dns"
+  register: powerflex_uuid
+  delegate_to: localhost
+
+- name: Install PowerFlex Storage Data Client (SDC)
+  zypper:
+    # SLES 15 SP4 SDC rpm
+    name: "http://{{ repo_ip_address }}/{{ repo_folder }}/{{ sles15sp4_sdc if sp_version == 'SP4' else sles15sp3_sdc if sp_version == 'SP3' else sles15sp2_sdc }}"
+    state: present
+    disable_gpg_check: yes
+  environment:
+    MDM_IP: '{{ powerflex_mdm_ip }}'
+    SDC_GUID: '{{ powerflex_uuid.stdout }}'
+  become: yes
+  when: powerflex_host is defined and powerflex_host != "" and inventory_hostname in groups["worker"] 
+
+- name: Cleanup Rook-Ceph OSD disks
+  include_role:
+    name: ceph_clean_osd
+  when: is_ceph is defined and is_ceph and inventory_hostname in groups["ceph_racks"] 
+  tags:
+    - clean_ceph
+    - rook
+
+- name: Configure CCM & Keepalived
+  include_tasks: keepalived_worker.yml
+  tags:
+    - deploy_ccm
+  when: '"ccm_lb" in groups'
+
+- name: Configure CSI Drivers/Provisioners
+  block:
+    - name: Configure 3PAR CSI driver
+      include_tasks: 3par.yml
+      when: hpe3par_ip is defined and hpe3par_ip != ""
+
+    - name: Configure Unity CSI driver
+      include_tasks: unity.yml
+      when: unity_host is defined and unity_host != ""
+
+    - name: Configure Powerflex CSI driver
+      include_tasks: powerflex.yml
+      when: powerflex_host is defined and powerflex_host != ""
+
+    - name: Configure Powerstore
+      include_tasks: powerstore.yml
+      when: powerstore_ip is defined and powerstore_ip != ""
+
+    - name: Configure Rook-Ceph
+      include_role:
+        name: rook_ceph
+      when: is_ceph is defined and is_ceph
+      tags:
+        - rook
+
+    - name: Get Storage classes
+      kubernetes.core.k8s_info:
+        kind: StorageClass
+      register: storage_classes
+
+    - name: "Check if {{ deployment_name }}-eric-lcm-container-registry persistent volume exists"
+      kubernetes.core.k8s_info:
+        api_version: v1
+        kind: PersistentVolume
+        name: "{{ deployment_name }}-eric-lcm-container-registry"
+      register: registry_pv
+      tags:
+        - registry
+
+    - name: Remove resourceVersion and uid from container registry PVC
+      kubernetes.core.k8s_json_patch:
+        kind: PersistentVolume
+        name: "{{ deployment_name }}-eric-lcm-container-registry"
+        patch:
+          - op: remove
+            path: /spec/claimRef/resourceVersion
+          - op: remove
+            path: /spec/claimRef/uid
+      when: registry_pv.resources| length == 1 and registry_pv.resources[0].status.phase == "Released"
+      tags:
+        - registry
+
+  delegate_to: localhost
+  run_once: yes
+  environment:
+    K8S_AUTH_KUBECONFIG: "/tmp/{{ deployment_name }}.admin.conf"
+  tags:
+    - config_storage
+
+- name: Get default storage class
+  set_fact:
+    default_storage_class: '{{ storage_classes.resources | map(attribute="metadata") | rejectattr("annotations","undefined") | selectattr("annotations","match",".*/is-default-class") |map(attribute="name") |first }}'
+  run_once: True
+
+- name: Configure container registry and Victoria Metrics
+  include_tasks: container_registry.yml
+  tags:
+    - registry
+
+- name: Copy docker config.json to /var/lib/kubelet/ on worker
+  template:
+    src: config.json.j2
+    dest: /var/lib/kubelet/config.json
+
+# This block is required for issue found in ECCDSUPP-2713 - will be removed once fixed in the CCD code
+- name: Update kubelet systemd to include ipv4 and ipv6 in node-ip parameter value
+  block:
+    - name: Update kubelet systemd
+      replace:
+        dest: /usr/lib/systemd/system/kubelet.service
+        regexp: "(--node-ip.*\\w)"
+        replace: "--node-ip={{ ansible_internal.ipv4.address }},{{ ansible_internal.ipv6.address }}"
+        backup: yes
+      register: kubelet_updated
+
+    - name: Move kubelet systemd backup file to /var/tmp/ directory
+      shell: "mv /usr/lib/systemd/system/kubelet.service.* /var/tmp/"
+      when: kubelet_updated.changed
+
+    - name: Restart kubelet service
+      systemd:
+        name: kubelet
+        state: restarted
+        daemon_reload: yes
+      when: kubelet_updated.changed
+  when: network_deployment_type is defined and network_deployment_type == "dualstack"
+  tags:
+    - nodeip
+- name: Add local container registry cert/CA cert to CA Trusted Certs
+  block:
+    - name: Copy registry certificate to /etc/pki/trust/anchors/
+      copy:
+        src: "/etc/containerd/certs.d/registry.{{ deployment_name }}.athtem.eei.ericsson.se/ca.crt"
+        dest: /etc/pki/trust/anchors/{{ deployment_name }}.crt
+        remote_src: yes
+      register: copy_cert
+
+    - name: Update CA trusted certificates to include registry cert
+      shell: update-ca-certificates
+      when: copy_cert.changed
+
+    - name: Update bashrc for root
+      copy:
+        dest: /root/.bashrc
+        content: 'export GODEBUG="x509ignoreCN=0"'
+
+    - name: Update bashrc for bmadm
+      lineinfile:
+        path: /home/bmadm/.bashrc
+        insertafter: EOF
+        line: 'export GODEBUG="x509ignoreCN=0"'
+        backup: yes
+
+    - name: Restart containerd (workers only)
+      systemd:
+        name: containerd
+        state: restarted
+        daemon_reload: yes
+      when: inventory_hostname in groups["worker"]
+    - name: Restart containerd and docker (masters only)
+      systemd:
+        name: '{{ item }}'
+        state: restarted
+        daemon_reload: yes
+      loop:
+        - containerd
+        - docker
+      when: inventory_hostname in groups["master"]
+      throttle: 1
+  tags:
+    - certupdate
+
+- name: Create etcd-certs secret in the monitoring namespace
+  include_tasks: create-mon-secret.yml
+  when: pm_monitoring_enabled is defined and pm_monitoring_enabled is false
+  tags:
+    - mon_secret

@@ -1,0 +1,16 @@
+vyos:
+  vars:
+    ansible_ssh_common_args: '-oStrictHostKeyChecking=no'
+    pod: "p0"
+    northbound_vlan_name: "p0-vrouter-trans4"
+    northbound_vlan_id: 928
+    cloud: "cloud15a"
+  hosts:
+    ieatp0vyos021:
+      ansible_host: 10.224.254.21
+      ansible_user: vyos
+      ansible_ssh_pass: '{{ vyos_password }}'
+    ieatp0vyos022:
+      ansible_host: 10.224.254.22
+      ansible_user: vyos
+      ansible_ssh_pass: '{{ vyos_password }}'

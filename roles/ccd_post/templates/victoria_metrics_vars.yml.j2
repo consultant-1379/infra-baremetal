@@ -1,0 +1,8 @@
+# CCD 2.21 parameter name
+#pm_victoria_metrics_enabled: true
+# CCD 2.22 parameter name
+pm_monitoring_enabled: false
+pm_vmstorage_volume_storage_class: {{ default_storage_class }}
+pm_vmselect_ingress_enabled: True
+pm_vmselect_ingress_hostname: metrics.{{ deployment_name }}.{{ domain_name }}
+pm_victoria_metrics_collect_only_ccd_namespace_metrics: true

@@ -1,0 +1,28 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ pv_name }}
+spec:
+  capacity:
+    storage: {{ pv_size }}
+  volumeMode: Filesystem
+  claimRef:
+    apiVersion: v1
+    kind: PersistentVolumeClaim
+    name: {{ pvc_name }}
+    namespace: {{ pvc_ns }}
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  {% if mount_options is defined and mount_options != "" %}
+  mountOptions: {{ mount_options }}
+  {% endif %}
+  nfs:
+  {% if nfs_nas_ip is defined %}
+    path: "/vx/{{ pv_name | regex_replace(fs_override|default(""),"") }}/pv_root"
+  {% else %}
+    path: "/{{ pv_name }}/pv_root"
+  {% endif %}
+    server: "{{ nas_server_ip }}"

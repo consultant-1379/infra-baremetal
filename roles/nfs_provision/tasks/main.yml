@@ -1,0 +1,26 @@
+---
+# tasks file for nfs_provision
+
+- name: Create NFS file systems and exports on DellEMC PowerStore
+  include_tasks: powerstore.yml
+  when: powerstore_ip is defined and powerstore_ip != ""
+
+- name: Veritas Access
+  block:
+    - name: Create NAS file systems and NFS shares
+      include_tasks: va.yml
+      loop: '{{ persistent_volumes }}'
+      loop_control:
+        loop_var: pv
+        label: '{{ pv.name }}'
+    - name: Set 'nas_server_ip' variable for K8s
+      set_fact:
+        nas_server_ip: '{{ nfs_nas_ip }}'
+
+  when: nfs_nas_ip is defined and nfs_nas_ip != ""
+
+- name: Create pv_root for each NFS share
+  include_tasks: pv_root.yml
+
+- name: Create a PersistentVolume in K8s for each NFS share
+  include_tasks: createpvs.yml

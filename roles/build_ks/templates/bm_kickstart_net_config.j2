@@ -1,0 +1,17 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+version: 1
+config:
+  - type: physical
+    name: eth0
+    subnets:
+      - type: static
+        address: {{ dhcp_next_server }}/{{ provisioning_cidr }}
+        gateway: {{ provisioning_gateway }}
+  - type: nameserver
+    address:
+      {% for dns in dns_servers %}
+      - {{ dns }}
+      {% endfor %}
+    search:
+      - athtem.eei.ericsson.se
+      - ericsson.se

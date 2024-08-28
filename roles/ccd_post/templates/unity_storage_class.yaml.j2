@@ -1,0 +1,22 @@
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: unity
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+
+provisioner: csi-unity.dellemc.com
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+volumeBindingMode: Immediate
+parameters:
+  protocol: FC
+  arrayId: {{ unity_serial }}
+  storagePool: {{ unity_pool_id }}
+  thinProvisioned: "true"
+  isDataReductionEnabled: "false"
+allowedTopologies:
+  - matchLabelExpressions:
+      - key: csi-unity.dellemc.com/{{ unity_serial | lower }}-fc # this must be lowercase to match the labels on the nodes
+        values:
+          - "true"

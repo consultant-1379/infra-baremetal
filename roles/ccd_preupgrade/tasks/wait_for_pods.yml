@@ -1,0 +1,39 @@
+- block:
+    - name: "Download {{ deployment_name }} kubernetes config file from MinIO bucket"
+      aws_s3:
+        aws_access_key: "{{ minio_access_key }}"
+        aws_secret_key: "{{ minio_secret_key }}"
+        s3_url: "{{ minio_url }}"
+        encrypt: no
+        bucket: de-cni
+        object: "/ccd/{{ deployment_name }}/{{ deployment_name }}.admin.conf"
+        dest: "/tmp/{{ deployment_name }}.admin.conf"
+        mode: get
+        ignore_nonexistent_bucket: True
+      run_once: yes
+      delegate_to: localhost
+
+    - name: Get a list of namespaces
+      kubernetes.core.k8s_info:
+        kind: Namespace
+      register: ns
+      environment:
+        K8S_AUTH_KUBECONFIG: "/tmp/{{ deployment_name }}.admin.conf"
+
+    - name: Set ENM namespace 
+      set_fact:
+        enm_ns: '{{ ns.resources | map(attribute="metadata") |map(attribute="name") |select("match","^enm") | first }}'
+
+    - name: 'Get a list of all pods from the {{ enm_ns }} namespace'
+      kubernetes.core.k8s_info:
+        kind: Pod
+        namespace: '{{ enm_ns }}'
+        label_selectors:
+          - '!job-name'
+      register: pod_list
+      until: pod_list.resources | map(attribute="status")| map(attribute="phase")| reject("match","Running|Succeeded") | list |length <= 10
+      retries: 100
+      delay: 10
+      environment:
+        K8S_AUTH_KUBECONFIG: "/tmp/{{ deployment_name }}.admin.conf"
+  delegate_to: localhost

@@ -1,0 +1,165 @@
+---
+- name: Configure Hashicorp Repo required for Terraform & Packer
+  shell: "yum install -y yum-utils; yum-config-manager --add-repo https://rpm.releases.hashicorp.com/RHEL/hashicorp.repo"
+
+- name: Find Path for Virsh Pool where Kickstart VM will be deployed
+  shell: "grep path /etc/libvirt/storage/{{ virsh_storage_pool }}.xml | awk -F '[><]' '{ print $3 }'"
+  register: install_dir
+
+- name: 'Create {{ deployment_name }}_pxe bridge'
+  nmcli:
+    conn_name: '{{ deployment_name }}_pxe'
+    ifname: '{{ deployment_name }}_pxe'
+    type: bridge
+    stp: no
+    ip4: '{{ provisioning_phost_ip }}/{{ provisioning_cidr }}'
+    state: present
+
+- name: 'Create bond0.{{ provisioning_vlan_id }} interface'
+  nmcli:
+    conn_name: 'bond0.{{ provisioning_vlan_id }}'
+    ifname: 'bond0.{{ provisioning_vlan_id }}'
+    type: vlan
+    vlanid: '{{ provisioning_vlan_id }}'
+    vlandev: bond0
+    state: present
+
+- name: 'Add bond0.{{ provisioning_vlan_id }} to {{ deployment_name }}_pxe bridge'
+  shell: 'nmcli con mod bond0.{{ provisioning_vlan_id }} master {{ deployment_name }}_pxe slave-type bridge'
+  args:
+    warn: False
+
+- name: Configure Packer for new images
+  block:
+    - name: Install required packer packages
+      vars:
+        pkgs:
+          - packer
+          - tigervnc
+      yum:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ pkgs }}"
+    - name: Remove cracklib-packer symbolic link
+      file:
+        path: "/usr/sbin/packer"
+        state: absent
+    - name: Set bridge configuration to allow all
+      lineinfile:
+        path: /etc/qemu-kvm/bridge.conf
+        regexp: 'allow*'
+        line: 'allow all'
+    - name: Update PATH environment variable to include path to qemu
+      lineinfile:
+        path: ~/.bash_profile
+        regexp: '^PATH'
+        line: 'PATH=$PATH:$HOME/bin:/usr/libexec'
+    - name: Add Packer log to environment variable
+      lineinfile:
+        path: ~/.bash_profile
+        state: present
+        insertafter: EOF
+        line: export PACKER_LOG=1
+    - name: "Create {{ deployment_name }} packer directory and http subdirectory"
+      file:
+        state: directory
+        path:  "{{ install_dir.stdout }}/{{ deployment_name }}/{{ item }}"
+        mode: 0755
+      with_items:
+        - ["http"]
+    - name: Remove images from packer output directories
+      file:
+        path: "{{ install_dir.stdout }}/{{ deployment_name }}/output_bm_ks/"
+        state: absent
+    - name: Copy Packer Kickstart files
+      copy:
+        src: http/bm-ks.cfg
+        dest: "{{ install_dir.stdout }}/{{ deployment_name }}/http"
+    - name: Generate Kictstart VM packer files from templates
+      template:
+        src: '{{ tf_template }}'
+        dest: "{{ install_dir.stdout }}/{{ deployment_name }}/{{ tf_template | regex_replace('.j2','') }}"
+      loop:
+        - bm_kickstart.json.j2
+        - bm_kickstart.yml.j2
+      loop_control:
+        loop_var: tf_template
+        label: "{{ tf_template | regex_replace('.j2','') }}"
+    - name: Build Kickstart Image
+      shell: 'source ~/.bash_profile ; cd {{ install_dir.stdout }}/{{ deployment_name }} ; packer build bm_kickstart.json'
+    - name: Copy new image to {{ install_dir.stdout }} (defined in virsh-pool) directory
+      copy:
+        src: "{{ install_dir.stdout }}/{{ deployment_name }}/output_bm_ks/{{ ks_img_name }}"
+        dest: "{{ install_dir.stdout }}"
+        remote_src: yes
+    - name: Copy images to Repo Server
+      shell: "sshpass -e scp {{ install_dir.stdout }}/{{ deployment_name }}/output_bm_ks/{{ ks_img_name }} root@{{ repo_ip_address }}:{{ full_repo_path }}"
+      environment: 
+        SSHPASS: "{{ repo_password }}"
+    - name: Remove images from packer output directories
+      file:
+        path: "{{ install_dir.stdout }}/{{ deployment_name }}/output_bm_ks/"
+        state: absent
+    - name: "Remove packer_cache subdirectory"
+      file:
+        path:  "{{ install_dir.stdout }}/{{ deployment_name }}/packer_cache"
+        state: absent
+  when: ( reuse_ks_image is defined and reuse_ks_image == 'new' )
+
+- name: Install required terraform packages
+  vars:
+    pkgs:
+      - terraform
+  yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ pkgs }}"
+- name: Create a terraform plugin directory if it does not exist
+  file:
+    path: ~/.local/share/terraform/plugins/registry.terraform.io/dmacvicar/libvirt/0.6.2/linux_amd64
+    state: directory
+    mode: '0744'
+- name: Unarchive terraform libvirt plugin
+  unarchive:
+    src: "https://github.com/dmacvicar/terraform-provider-libvirt/releases/download/v0.6.2/terraform-provider-libvirt-0.6.2+git.1585292411.8cbe9ad0.Fedora_28.x86_64.tar.gz"
+    dest: "~/.local/share/terraform/plugins/registry.terraform.io/dmacvicar/libvirt/0.6.2/linux_amd64"
+    remote_src: yes
+- name: "Create terraform subdirectory"
+  file:
+    state: directory
+    path:  "{{ install_dir.stdout }}/{{ deployment_name }}/terraform"
+    mode: 0755
+- name: Copy Kickstart VM terraform files from templates to Physical Host
+  template:
+    src: '{{ tf_template }}'
+    dest: "{{ install_dir.stdout }}/{{ deployment_name }}/terraform/{{ tf_template | regex_replace('.j2','') }}"
+  loop:
+    - bm_kickstart.tf.j2
+    - bm_kickstart_net_config.j2
+    - bm_network.tfvars.j2
+    - bm_network.tf.j2
+  loop_control:
+    loop_var: tf_template
+    label: "{{ tf_template | regex_replace('.j2','') }}"
+- name: "Check if {{ install_dir.stdout }}/{{ ks_img_name }} already exists"
+  stat:
+    path: "{{ install_dir.stdout }}/{{ ks_img_name }}"
+  register: ks_img_stat
+- name: Download Kickstart Image from Repo Server
+  get_url:
+    url: "http://{{ repo_ip_address }}/{{ repo_folder }}/{{ ks_img_name }}"
+    dest: "{{ install_dir.stdout }}"
+  when: ( reuse_ks_image is defined and reuse_ks_image == 'reuse' and not ks_img_stat.stat.exists )
+- name: Deploy VMs from Images
+  terraform:
+    project_path: "{{ install_dir.stdout }}/{{ deployment_name }}/terraform"
+    state: present
+    force_init: true
+    variables_file: "{{ install_dir.stdout }}/{{ deployment_name }}/terraform/bm_network.tfvars"
+- name: Wait for Kickstart VM to start
+  wait_for:
+    port: 22
+    host: "{{ kickstart_shortname }}"
+    search_regex: OpenSSH
+    delay: 5
+    timeout: 180

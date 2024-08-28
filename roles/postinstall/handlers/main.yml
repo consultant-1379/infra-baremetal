@@ -1,0 +1,30 @@
+- name: Restart docker
+  systemd: 
+    name: docker
+    state: restarted
+  listen: restart_docker
+
+- name: Restart SSHD
+  systemd: 
+    name: sshd
+    state: restarted
+  listen: restart_ssh
+
+- name: Restart wicked
+  systemd:
+    name: wicked
+    state: restarted
+  async: 60
+  poll: 0
+  listen: restart_wicked
+  register: wicked_result
+  when: netcfg.changed
+
+- name: Wicked check async task
+  async_status:
+    jid: "{{ wicked_result.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 30
+  listen: restart_wicked
+  when: netcfg.changed

@@ -1,0 +1,59 @@
+---
+# tasks to create file systems and shares on PowerStore
+- name: Provision using PowerStore
+  block:
+    - name: Get details of NAS Server by name
+      dellemc.powerstore.nasserver:
+        array_ip: "{{ powerstore_ip }}"
+        verifycert: no
+        user: "{{ powerstore_user }}"
+        password: "{{ powerstore_password }}"
+        nas_server_name: "{{ nas_server_name }}"
+        state: "present"
+      register: nas_details
+
+    - name: "Round up file system size to Powerstore minimum size: 3Gi"
+      set_fact:
+        rounded_up_pvs: '{{ rounded_up_pvs | default([]) + [ { "name": vol.name ,"size": [vol.size,3] | max  } ] }}'
+      loop: '{{ persistent_volumes }}'
+      loop_control:
+        loop_var: vol
+        label: '{{ vol.name }}'
+
+    - name: Create RWX PVC file systems on powerstore
+      block:
+        - name: Create new File System
+          dellemc.powerstore.filesystem:
+            array_ip: "{{ powerstore_ip }}"
+            verifycert: no
+            user: "{{ powerstore_user }}"
+            password: "{{ powerstore_password }}"
+            filesystem_name: "{{ deployment_name }}-{{ item.name }}"
+            nas_server: "{{ nas_server_name }}"
+            size: "{{ item.size|int }}"
+            cap_unit: "GB"
+            state: "present"
+          loop: '{{ rounded_up_pvs }}'
+
+        - name: Create NFS export
+          dellemc.powerstore.nfs:
+            array_ip: "{{ powerstore_ip }}"
+            verifycert: no
+            user: "{{ powerstore_user }}"
+            password: "{{ powerstore_password }}"
+            nfs_export_name: "{{ deployment_name }}-{{ item.name }}"
+            filesystem: "{{ deployment_name }}-{{ item.name }}"
+            nas_server: "{{ nas_server_name }}"
+            path: "/{{ deployment_name }}-{{ item.name }}"
+            default_access: "NO_ACCESS"
+            read_write_root_hosts:
+              - "{{ nfs_subnet }}/{{ nfs_cidr }}"
+            min_security: "SYS"
+            host_state: "present-in-export"
+            state: "present"
+          loop: '{{ rounded_up_pvs }}'
+
+    - name: Set NAS Server IP address (nas_server_ip)
+      set_fact:
+        nas_server_ip: "{{ nas_details.nasserver_details.file_interfaces[0].ip_address }}"
+  delegate_to: localhost

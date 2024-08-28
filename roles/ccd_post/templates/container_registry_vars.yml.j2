@@ -1,0 +1,10 @@
+cr_hostname: "registry.{{ deployment_name }}.{{ domain_name }}"
+{% if is_ceph is not defined %}
+cr_storage_class: "nfs"
+{% else %}
+cr_storage_class: "network-file-x3"
+{% endif %}
+container_registry_replicas: 2
+cr_storage_size: "200Gi"
+cr_cred_custom_user_id: "admin"
+cr_cred_custom_pw: "{{ container_registry_password }}"

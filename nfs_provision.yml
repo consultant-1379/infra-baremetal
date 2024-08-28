@@ -1,0 +1,39 @@
+---
+- hosts: localhost
+  gather_facts: no
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  pre_tasks:
+    - name: ENM block
+      block:
+        - name: Create temporary file for script output
+          tempfile:
+            state: file
+            prefix: "volumes"
+          register: volumes_file
+
+        - name: Get cENM volume information
+          shell: "python3 get_cenm_volume_info.py --productset {{ productset }} --size {{ size }} --output {{ volumes_file.path }}"
+          register: get_volume_info_output
+        
+        - debug:
+            msg: '{{ get_volume_info_output.stdout }}'
+        - name: Set fs_override for VA 
+          set_fact:
+            fs_override: "(eric-enm-.*pvc-|eric-enmsg-|sitory|eric-enm-monitoring-master-|eric-enm-)"
+          when: nfs_nas_ip is defined and nfs_nas_ip != ""
+        - name: Save persistent volumes
+          set_fact:
+            persistent_volumes: '{{ lookup("file",volumes_file.path) }}'
+      tags:
+        - enm
+  roles:
+    - name: nfs_provision    
+  tasks:
+    - name: "Clean up volumes file {{ volumes_file.path }}"
+      file:
+        path: "{{ volumes_file.path }}"
+        state: absent
+      tags:
+        - enm

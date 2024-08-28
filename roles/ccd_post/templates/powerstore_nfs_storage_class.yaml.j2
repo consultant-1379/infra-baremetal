@@ -1,0 +1,16 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: "powerstore-nfs"
+provisioner: "csi-powerstore.dellemc.com"
+parameters:
+  arrayID: "{{ powerstore_system_id }}"
+  FsType: "nfs"
+  nasName: "{{ nas_server_name}}"
+{# allowRoot: "true" - is equivalent to root_squash #}
+  allowRoot: "true"
+{# Delete the PV after PVC deletion #}
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+volumeBindingMode: Immediate

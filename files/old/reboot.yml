@@ -1,0 +1,17 @@
+---
+- hosts: blades:!master
+  gather_facts: no
+  serial: 1
+  become: yes
+  tasks:
+    - pause:
+        prompt: "This playbook will delete all worker nodes (one at a time). Enter (y/n) to continue:"
+      register: confirm_reboot_ok
+    - name: Reboot blades
+      reboot:
+        post_reboot_delay: 60
+        msg: "Rebooting {{ inventory_hostname }}"
+      when: confirm_reboot_ok.user_input|lower == "y" or confirm_reboot_ok.userinput | lower == 'yes'
+    - debug:
+        msg: "Reboot cancelled as user entered '{{ confirm_reboot_ok.user_input }}''"
+      run_once: yes

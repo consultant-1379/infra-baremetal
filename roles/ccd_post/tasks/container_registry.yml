@@ -1,0 +1,75 @@
+- name: Configure Container Registry
+  block:
+    - name: Find CCD directory
+      find:
+        path: /var/
+        file_type: directory
+        use_regex: yes
+        recurse: yes
+        patterns:
+          - '^eccd'
+      register: find_ccd_dir
+
+    - name: Save path to CCD ansible/erikube directory
+      set_fact:
+        eccd_ansible_dir: "{{ find_ccd_dir.files | map(attribute='path') | first }}/ansible/erikube"
+
+    - name: Create a temporary copy of ~/ccd_inventory.yml
+      copy:
+        src: ~/ccd_inventory.yml
+        dest: /tmp/ccd_inventory.yml
+        remote_src: yes
+
+    - name: "Copy vars files to {{ eccd_ansible_dir }}"
+      template:
+        src: '{{ item }}'
+        dest: "{{ eccd_ansible_dir }}/{{ item | regex_replace('.j2','') }}"
+      loop:
+        - container_registry_vars.yml.j2
+        - victoria_metrics_vars.yml.j2
+      loop_control:
+        label: "{{ item | regex_replace('.j2','') }}"
+
+    - name: Update /tmp/ccd_inventory.yml to enable container registry
+      replace:
+        path: /tmp/ccd_inventory.yml
+        regexp: '.*container_registry_enabled.*'
+        replace: "    container_registry_enabled: true"
+
+    - name: Create volume for the container registry
+      import_role:
+        name: nfs_provision
+      vars:
+        pvc_ns: kube-system
+        fs_override: "{{ 'eric-lcm-container-' if  nfs_nas_ip is defined else '' }}"
+        mount_options:
+          - actimeo=0
+        persistent_volumes:
+          - name: eric-lcm-container-registry
+            size: 200
+      when: is_ceph is not defined
+
+    - name: Set container registry PVC to RWX
+      lineinfile:
+        path: "{{ eccd_ansible_dir }}/playbooks/cr-registry-deploy.yml"
+        insertafter: '^\s+storageClassName:.*$'
+        line: "                accessMode: ReadWriteMany"
+
+    - name: Run cr-registry-deploy.yml to deploy Container registry
+      shell: ansible-playbook -i /tmp/ccd_inventory.yml playbooks/cr-registry-deploy.yml -e @container_registry_vars.yml -e "helm_chart_loc=../../helm-charts"
+      args:
+        chdir: '{{ eccd_ansible_dir }}'
+
+    - name: Install Victoria Metrics
+      shell: ansible-playbook -i /tmp/ccd_inventory.yml playbooks/victoria-metrics-pm-deploy.yml -e @victoria_metrics_vars.yml
+      args:
+        chdir: '{{ eccd_ansible_dir }}'
+      register: victoria_metrics_result
+      when: pm_monitoring_enabled is defined and pm_monitoring_enabled is true
+
+    - name: Delete temporary inventory /tmp/ccd_inventory.yml
+      file:
+        path: /tmp/ccd_inventory.yml
+        state: absent
+  delegate_to: kickstart
+  run_once: True

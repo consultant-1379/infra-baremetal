@@ -1,0 +1,139 @@
+- name: Set sysctl settings (worker nodes only)
+  sysctl:
+    name: 'net.ipv4.vs.conntrack'
+    value: '1'
+    sysctl_set: yes
+  when: inventory_hostname in groups["worker"]
+
+- name: Set rp_filter=2 on all nodes
+  sysctl:
+    name: 'net.ipv4.conf.internal.rp_filter'
+    value: '2'
+    sysctl_set: yes
+
+- name: Change master networking config
+  block:
+    - name: Remove ifroute-traffic and ifroute-bond files
+      file:
+        state: absent
+        path: '/etc/sysconfig/network/ifroute-{{ item }}'
+      loop:
+        - traffic
+        - bond0
+
+    - name: Set default gateway to internal network (masters only)
+      template:
+        src: '{{ role_path }}/../postinstall/templates/ifroute-internal.j2'
+        dest: '/etc/sysconfig/network/ifroute-internal'
+      notify: restart_wicked
+      register: netcfg
+  when: inventory_hostname in groups["master"]
+
+- name: Create SLES15 SP2 repo on the kickstart VM
+  block:
+    - name: Create SLES15 SP2 Directory in HTTPD webroot
+      file:
+        path: /var/www/html/SLES15-SP2/
+        state: directory
+    - name: Download SLES15 SP2 ISO
+      get_url:
+        url: http://{{ repo_ip_address }}/{{ repo_folder }}/{{ sles15sp2_img }}
+        dest: /var/www/html/SLES15-SP2/
+        mode: '0440'
+    - name: Mount SLES SP2 ISO to /var/tmp/sles_iso
+      shell: "mount -o loop /var/www/html/SLES15-SP2/{{ sles15sp2_img }} /mnt"
+    - name: Copy ISO Files to /var/www/html/SLES15-SP2/
+      copy:
+        src: /mnt/
+        dest: /var/www/html/SLES15-SP2/
+        remote_src: yes
+    - name: Unmount SLES SP2 ISO from /mnt
+      shell: "umount /mnt"
+  delegate_to: kickstart
+  run_once: yes
+  tags:
+    - ks_repo
+
+- name: Add Zypper repos
+  zypper_repository:
+    name: '{{ repo }}'
+    repo: '{{ repo_base_url }}/{{ repo }}'
+    disable_gpg_check: yes
+  loop: '{{ repos }}'
+  loop_control:
+    loop_var: repo
+    label: '{{ repo }}'
+
+# - name: Copy RMT CA certificate
+#   copy:
+#     src: rmt-ca.crt
+#     dest: /etc/pki/trust/anchors/rmt-ca.crt
+
+# - name: Updated Trusted CA Certificates
+#   command: update-ca-certificates
+
+# - name: Write SUSEConnect config
+#   command: SUSEConnect --write-config --url https://sles.eccd.gic.ericsson.se
+
+# - name: "Add product subscriptions"
+#   shell:  "SUSEConnect -p {{ item }}"
+#   loop: '{{ sp2_product_subscriptions }}'
+#   when: inventory_hostname != "ieatbmb7225-worker-6"
+
+# - name: List repos and extensions
+#   shell: "SUSEConnect --list-extensions; zypper lr"
+
+- name: Remove SP1 Zypper repos
+  zypper_repository:
+    name: '{{ repo }}'
+    state: absent
+  loop: '{{ old_repos }}'
+  loop_control:
+    loop_var: repo
+    label: '{{ repo }}'
+
+- name: Remove SLES15 SP1 Installation repo
+  file:
+    path: /etc/zypp/repos.d/SLES15-SP1-15.1-0.repo
+    state: absent
+
+- name: Create SLES15 SP2 repo
+  template:
+    src: SLE-15-SP2-DVD.repo.j2
+    dest: /etc/zypp/repos.d/SLE-15-SP2-DVD.repo
+
+- name: Add backports repo
+  zypper_repository:
+    name: Backports
+    repo: https://arm.sero.gic.ericsson.se/artifactory/proj-suse-repos-rpm-local/SUSE/Backports/SLE-15-SP2_x86_64/standard/ 
+    disable_gpg_check: yes
+
+- name: Refresh all repos
+  zypper_repository:
+    repo: '*'
+    runrefresh: yes
+
+- name: Add local container registry cert/CA cert to CA Trusted Certs
+  block:
+    - name: copy registry cert
+      copy:
+        src: /etc/docker/certs.d/registry.bmccd0.athtem.eei.ericsson.se/ca.crt
+        dest: /etc/pki/trust/anchors/bmccd0.crt
+        remote_src: yes
+      register: copy_cert
+    - name: Update CA trust
+      shell: update-ca-certificates
+      when: copy_cert.changed
+
+    - name: Update bashrc
+      copy:
+        dest: /root/.bashrc
+        content: 'export GODEBUG="x509ignoreCN=0"'
+
+    - name: Update bashrc for bmadm
+      lineinfile:
+        path: /home/bmadm/.bashrc
+        insertafter: EOF
+        line: 'export GODEBUG="x509ignoreCN=0"'
+        backup: yes
+

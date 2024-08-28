@@ -1,0 +1,66 @@
+---
+- name: Copy ccd_inventory.yml to /var/tmp
+  copy:
+    src: "/root/ccd_inventory.yml"
+    dest: "/var/tmp/install_ccd_inventory.yml"
+    remote_src: yes
+
+- name: Set node_type to racks or blades
+  set_fact:
+    node_type: '{{ "racks" if all_racks else "blades" }}'
+
+- name: Remove ungrouped from /var/tmp/install_ccd_inventory.yml
+  replace:
+    path: '/var/tmp/install_ccd_inventory.yml'
+    after: 'ansible_ssh_common_args: " -o StrictHostKeyChecking=no "'
+    before: '{{ node_type }}'
+    regexp: "^(.+)$"
+    replace: ''
+
+- name: Create directory for CCD SW
+  file:
+    path: /var/tmp/ccd
+    state: directory
+    mode: 0755
+
+- name: Extract CCD SW located on repo server
+  unarchive:
+    src: "http://{{ repo_ip_address }}/{{ repo_folder }}/ccd_latest_sw.tgz"
+    dest: /var/tmp/ccd/
+    remote_src: yes
+  tags:
+    - download_ccd 
+
+- name: Find CCD directory
+  find:
+    path: /var/
+    file_type: directory
+    use_regex: yes
+    recurse: yes
+    patterns:
+      - '^eccd'
+  register: find_ccd_install_dir
+
+- name: Save path to CCD ansible/erikube directory
+  set_fact:
+    eccd_install_dir: "{{ find_ccd_install_dir.files | map(attribute='path') | first }}/ansible/erikube"
+
+- name: Ensure the /var/lib/eccd/ directory exists on all nodes
+  shell: "ansible -i /var/tmp/install_ccd_inventory.yml -m file -b -a 'path=/var/lib/eccd/ state=directory mode=0755' nodes"
+
+- name: Remove kernel check from host-preparation.yml # This is a bug in CCD 2.24 (JIRA CCD-16079)
+  copy:
+    src: host-preparation.yml
+    dest: "{{ eccd_install_dir }}/roles/host-prepare/tasks/host-preparation.yml"
+    backup: yes
+  when: '"eccd-2.24" in eccd_install_dir'
+
+- name: Install CCD on BM Deployment
+  shell: "export ANSIBLE_LOG_PATH=$(date '+%Y%m%d%H%M%S')-ccd_install_ansible.log; ansible-playbook -i /var/tmp/install_ccd_inventory.yml install.yml"
+  args:
+    chdir: '{{ eccd_install_dir }}'
+
+- name: Delete temporary inventory /var/tmp/ccd_inventory.yml
+  file:
+    path: /var/tmp/install_ccd_inventory.yml
+    state: absent

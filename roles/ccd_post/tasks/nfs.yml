@@ -1,0 +1,22 @@
+# No longer used - pre-provisioned volumes are created using the nfs_provision role
+- name: CCD post install task for setting up the NFS and Block storage
+  block:
+    - name: Add stable helm chart repo
+      kubernetes.core.helm_repository:
+        name: stable
+        repo_url: https://charts.helm.sh/stable
+
+    - name: Configure NFS provisioner
+      kubernetes.core.helm:
+        name: "nfs-{{ deployment_name }}"
+        chart_ref: stable/nfs-client-provisioner
+        release_namespace: kube-system
+        update_repo_cache: yes
+        release_values:
+          nfs:
+            server: '{{ nfs_nas_ip }}'
+            path: '{{ nfs_nas_share }}'
+          storageClass:
+            name: 'nfs-{{ deployment_name }}'
+            archiveOnDelete: false
+            accessModes: ReadWriteMany

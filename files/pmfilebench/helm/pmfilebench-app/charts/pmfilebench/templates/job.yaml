@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "pmfilebench.fullname" . }}
+  labels:
+    app.kubernetes.io/name: {{ include "pmfilebench.fullname" . }}
+    helm.sh/chart: {{ include "pmfilebench.chart" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "pmfilebench.fullname" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9090'
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.global.repository }}:{{ .Values.image.tag }}"
+          command: {{ .Values.global.command }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+          - containerPort: 9090
+          volumeMounts:
+          - name: loaddir
+            mountPath: /loaddir
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      volumes:
+      - name: loaddir
+        persistentVolumeClaim:
+          claimName: {{ .Values.volumes.loaddirVolumeName }}

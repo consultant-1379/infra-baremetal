@@ -1,0 +1,548 @@
+---
+# NB. renamed from main.yml as of ECCD v2.1 commit a4c0738
+# Don't think we need to accomodate for is_atomic here because of skip:true
+- name: Include OS Specific vars
+  include_vars: "{{ item }}"
+  with_first_found:
+    - files:
+        - "vars/{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
+        - "vars/{{ ansible_os_family }}.yml"
+      skip: true
+
+# Don't think we need to accomodate for is_atomic here because of skip:true
+- name: Configure OS specific repos
+  include_tasks: "{{ item }}"
+  with_first_found:
+    - files:
+        - "repos-{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.yml"
+      skip: true
+
+# Stop undesired services that might have been enabled by default in base OS images.
+- name: Disable unused services
+  include_tasks: disable-services.yml
+
+- name: Enable IP v4 forwarding
+  sysctl:
+    name: "net.ipv4.ip_forward"
+    value: "1"
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Enable IP v6 forwarding
+  block:
+    - name: Enable IP v6 forwarding
+      sysctl:
+        name: "net.ipv6.conf.all.forwarding"
+        value: "1"
+        sysctl_set: yes
+        state: present
+        reload: yes
+
+    - name: Modprobe IP6Tables modules
+      modprobe:
+        name: "{{ item }}"
+        state: present
+      with_items:
+        - ip6_tables
+        - ip6table_filter
+        - ip6table_nat
+        - ip6table_raw
+  when: k8s_ip_version == 'ipv6' or k8s_ip_version == 'dualstack'
+
+- name: Enable strict mode rp_filter
+  sysctl:
+    name: "net.ipv4.conf.all.rp_filter"
+    value: "1"
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Configure IANA port range
+  sysctl:
+    name: "net.ipv4.ip_local_port_range"
+    value: "49152 65535"
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Package handling for non-atomic OS
+  block:
+    - name: Update RedHat OS packages
+      yum:
+        name: "*"
+        state: latest
+        update_cache: yes
+      when: ansible_os_family == 'RedHat' and update_os and not is_atomic
+
+    - name: Update Ubuntu OS packages
+      apt:
+        update_cache: yes
+        upgrade: full
+        force_apt_get: yes
+      when: ansible_os_family == 'Debian' and update_os and not is_atomic
+
+    - name: Update SLES OS
+      block:
+        - name: Lock the ansible package from update
+          shell: zypper addlock -t package ansible
+          args:
+            warn: no
+
+        - name: Get old kernel release info
+          shell: uname -r
+          register: old_kernel_version
+
+        - name: Remove kernel-default-base
+          zypper:
+            name: kernel-default-base
+            state: "absent"
+
+        - name: Install kernel-default
+          zypper:
+            name: kernel-default
+            state: latest
+
+        - name: Apply all available SLES patches
+          command: "zypper patch -y"
+          register: patch_result
+          failed_when: false
+
+        - debug:
+            msg: "{{ patch_result.stdout_lines }}"
+            verbosity: 2
+
+        - name: Apply all available SLES patches (again)
+          command: "zypper patch -y"
+          register: patch_result
+
+        - debug:
+            msg: "{{ patch_result.stdout_lines }}"
+            verbosity: 2
+
+        - name: Update all SLES OS packages
+          zypper:
+            name: "*"
+            state: latest
+            update_cache: yes
+          retries: 3
+          delay: 5
+          register: result
+          until: result.rc == 0
+
+        - name: Install SLES basic patterns
+          zypper:
+            name: "{{ sles_patterns }}"
+            state: latest
+            type: pattern
+
+        - name: Reboot the machine in order to take new kernel-default and patches into use
+          shell: "sleep 5 && reboot"
+          async: 1
+          poll: 0
+
+        - name: Wait for the reboot to complete
+          wait_for_connection:
+            connect_timeout: 20
+            sleep: 5
+            delay: 5
+
+      when: ansible_os_family == 'Suse'
+
+    - name: Disable NetworkManager
+      systemd:
+        name: NetworkManager
+        state: stopped
+        enabled: false
+      register: task_result
+      failed_when: "task_result is failed and 'could not' not in task_result.msg|lower"
+      notify: ["kill dhclient", "start network service"]
+      when: azure_enable_cloud_provider | default(false) | bool
+
+    - name: Disable Firewall
+      systemd:
+        name: firewalld
+        state: stopped
+        enabled: False
+      register: task_result
+      failed_when: "task_result is failed and 'could not' not in task_result.msg|lower"
+
+  when: not is_atomic
+
+- name: Install packages on etcd, master and worker hosts
+  include_tasks: packages.yml
+  when: not (groups['ingress_lb'] is defined and inventory_hostname in groups['ingress_lb'])
+
+- name: Prepare loadbalancer host
+  include_tasks: loadbalancer.yml
+  when: groups['ingress_lb'] is defined and inventory_hostname in groups['ingress_lb']
+
+- name: Enable kernel modules
+  block:
+    - name: Check if the OS is Sles
+      block:
+
+        - name: Get kernel release info
+          shell: uname -r
+          register: new_kernel_version
+
+        # - name: Check if the new kernel version has come into place.
+        #   shell: uname -r
+        #   register: new_kernel_version
+        #   until: old_kernel_version.stdout != new_kernel_version.stdout
+        #   retries: 30
+        #   delay: 10
+        #   when: old_kernel_version.stdout == new_kernel_version.stdout
+
+      when: ansible_os_family == 'Suse'
+
+    - name: Get kernel release info
+      shell: uname -r
+      register: kernel_version
+
+    - name: Check if the kernel has SCTP netfilter support built-in
+      lineinfile:
+        path: "/boot/config-{{ kernel_version.stdout }}"
+        line: "CONFIG_NF_NAT_PROTO_SCTP=y"
+      check_mode: yes
+      register: sctp_builtin
+
+    - name: Add netfilter match SCTP module
+      copy:
+        content: xt_sctp
+        dest: "/etc/modules-load.d/nf_sctp.conf"
+
+    - name: Load xt_sctp modules
+      modprobe:
+        state: present
+        name: xt_sctp
+
+    - name: Add rbd module
+      copy:
+        content: rbd
+        dest: "/etc/modules-load.d/rbd.conf"
+
+    - name: Load rbd modules
+      modprobe:
+        state: present
+        name: rbd
+
+  become: yes
+
+# Hosts may not have python-selinux module installed, so we
+# will check and configure manually.
+# If SELinux is disabled, leave it that way.
+# If it is enabled, and enforcing, set it to permissive.
+- name: Check if /sys/fs/selinux/enforce file exists
+  stat:
+    path: /sys/fs/selinux/enforce
+  register: enforce_file
+
+- name: Check if selinux config exists
+  stat:
+    path: /etc/selinux/config
+  register: selinux_config
+
+- name: Register SELinux enforcing status
+  command: cat /sys/fs/selinux/enforce
+  register: enforce_status
+  when: enforce_file.stat.exists
+
+- name: Register SELinux config mode enforcing status
+  shell: grep '^SELINUX=' /etc/sysconfig/selinux | cut -d '=' -f2
+  register: selinux_config_mode
+  when: selinux_config.stat.exists
+
+- name: Set SELinux to permissive
+  shell: "echo 0 >/sys/fs/selinux/enforce"
+  when: selinux_config.stat.exists and selinux_config_mode.stdout == 'enforcing'
+
+- name: Set SELinux config mode to permissive
+  lineinfile:
+    path: /etc/selinux/config
+    regexp: "^SELINUX="
+    line: "SELINUX=permissive"
+  when: selinux_config.stat.exists and selinux_config_mode.stdout == 'enforcing'
+
+# https://docs.openshift.com/container-platform/3.4/admin_guide/overcommit.html#disabling-swap-memory
+- name: Check for swap usage
+  command: grep "^[^#].*swap" /etc/fstab
+  # grep: match any lines which don't begin with '#' and contain 'swap'
+  changed_when: false
+  failed_when: false
+  register: swap_result
+
+- name: Disable SWAP
+  block:
+    - name: Disable swap
+      command: swapoff --all
+
+    - name: Remove swap entries from /etc/fstab
+      replace:
+        dest: /etc/fstab
+        regexp: "(^[^#].*swap.*)"
+        replace: '# \1'
+        backup: yes
+
+    - name: Add notice about disabling swap
+      lineinfile:
+        dest: /etc/fstab
+        line: "# Erikube Installer disabled swap per overcommit guidelines"
+        state: present
+  when:
+    - swap_result.stdout_lines | length > 0
+
+- name: Load netfilter module
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: Enable iptables to see bridged packets
+  sysctl:
+    name: net.bridge.bridge-nf-call-iptables
+    value: "1"
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Enable iptables to see bridged packets (IPv6 or dualstack)
+  sysctl:
+    name: net.bridge.bridge-nf-call-ip6tables
+    value: "1"
+    sysctl_set: yes
+    state: present
+    reload: yes
+  when: k8s_ip_version == "ipv6" or k8s_ip_version == "dualstack"
+
+- name: Configure logrotate for SLES OS
+  block:
+    - name: Compress rotated logs to reduce disk usage
+      replace:
+        path: /etc/logrotate.conf
+        regexp: "^#compress"
+        replace: "compress"
+
+    - name: Rotated logs daily
+      replace:
+        path: /etc/logrotate.conf
+        regexp: "weekly"
+        replace: "daily"
+
+    - name: Keep 10 backlogs
+      replace:
+        path: /etc/logrotate.conf
+        regexp: "^.*rotate [0-9]?[0-9]"
+        replace: "rotate 10"
+
+    - name: Change comment
+      replace:
+        path: /etc/logrotate.conf
+        regexp: "keep [0-9] weeks worth of backlogs"
+        replace: "keep 10 backlogs"
+  become: true
+
+- name: Configure syslog for SLES OS
+  block:
+    - name: Configure syslog logrotate maxage config
+      replace:
+        path: /etc/logrotate.d/syslog
+        regexp: "maxage [0-9]?[0-9]?[0-9]"
+        replace: "maxage 60"
+
+    - name: Configure syslog logrotate count
+      replace:
+        path: /etc/logrotate.d/syslog
+        regexp: "^.*rotate [0-9]?[0-9]"
+        replace: "\ \ \ \ rotate 10"
+
+    - name: Configure syslog logrotate to be done daily
+      lineinfile:
+        path: /etc/logrotate.d/syslog
+        regexp: 'weekly'
+        insertafter: 'rotate 10'
+        line: "\ \ \ \ daily"
+
+    - name: Enable rsyslog for persistent logging
+      systemd:
+        name: rsyslog
+        state: started
+        enabled: yes
+      register: rsyslog_status
+      delay: 5
+      until: rsyslog_status.failed is defined and rsyslog_status.failed==false
+  when: ansible_os_family == 'Suse'
+  become: true
+
+- name: Enable irqbalance systemd service
+  systemd:
+    name: irqbalance
+    state: started
+    enabled: yes
+  become: true
+
+# https://cc-jira.rnd.ki.sw.ericsson.se/browse/ECE-3243
+- name: Create "/etc/kubernetes/manifests" directory if it doesn't exist
+  file:
+    path: /etc/kubernetes/manifests
+    state: directory
+    mode: "{{ file_default_mode }}"
+    owner: "{{ file_default_owner }}"
+    group: "{{ file_default_group }}"
+  when:
+    - ansible_hostname in groups['worker'] | default ([])
+
+- name: Create "/var/lib/eccd" directory if it doesn't exist
+  file:
+    path: /var/lib/eccd
+    state: directory
+    mode: "{{ file_default_mode }}"
+    owner: "{{ file_default_owner }}"
+    group: "{{ file_default_group }}"
+
+- name: Set hostname to match name on Openstack
+  shell: "hostnamectl set-hostname $(hostname -s)"
+  when: openstack_enable_cloud_provider | default('false') | bool
+
+- name: Install NTP client for time synchronization
+  include_role:
+    name: chrony
+  when: setup_chrony | default(false) | bool
+
+- name: Install keepalived
+  package:
+    name: keepalived
+    state: present
+  when: kube_api_vip_enabled | default(false) | bool
+
+- name: Set timezone to {{ timezone }}
+  timezone:
+    name: "{{ timezone | default('UTC') }}"
+
+- name: Creating /etc/systemd/coredump.conf file to configure coredump
+  copy:
+    dest: /etc/systemd/coredump.conf
+    content: |
+      [Coredump]
+      ProcessSizeMax=32G
+      ExternalSizeMax=32G
+      JournalSizeMax=32G
+      MaxUse=100G
+    group: root
+    owner: root
+    mode: 0644
+
+- name: Reload systemd daemon after configuring coredump
+  systemd:
+    daemon_reload: yes
+
+- name: Set core pattern for enabling core dump
+  sysctl:
+    name: "kernel.core_pattern"
+    value: "|/usr/lib/systemd/systemd-coredump %P %u %g %s %t 9223372036854775808 %e"
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Enable systemd-coredump.socket service for coredump handling
+  systemd:
+    name: systemd-coredump.socket
+    state: started
+    enabled: yes
+  when: ansible_os_family == 'Suse'
+
+- name: Set suid_dumpable for allowing dumping core
+  sysctl:
+    # seems only SLES suid_dumpable file located under kernel sub-folder
+    name: "{{ (ansible_distribution == 'SLES') | ternary('kernel.suid_dumpable', 'fs.suid_dumpable') }}"
+    value: "2"
+    sysctl_set: yes
+    state: present
+    reload: yes
+
+- name: Install audit package
+  package:
+    name: audit
+    state: present
+  when: ansible_os_family == 'Suse' or ansible_os_family == 'RedHat'
+
+- name: Install auditd package
+  package:
+    name: auditd
+    state: present
+  retries: 3
+  register: auditd_install_result
+  until: auditd_install_result is succeeded
+  when: ansible_os_family == 'Debian'
+
+- name: Set audit rules
+  blockinfile:
+    path: /etc/audit/rules.d/audit.rules
+    block: |
+      -a always,exit -F arch=b64 -S adjtimex -S settimeofday -k time-change
+      -a always,exit -F arch=b32 -S adjtimex -S settimeofday -S stime -k time-change
+      -a always,exit -F arch=b64 -S clock_settime -k time-change
+      -a always,exit -F arch=b32 -S clock_settime -k time-change
+      -w /etc/localtime -p wa -k time-change
+      -w /etc/group -p wa -k identity
+      -w /etc/passwd -p wa -k identity
+      -w /etc/gshadow -p wa -k identity
+      -w /etc/shadow -p wa -k identity
+      -w /etc/security/opasswd -p wa -k identity
+      -a always,exit -F arch=b64 -S sethostname -S setdomainname -k system-locale
+      -a always,exit -F arch=b32 -S sethostname -S setdomainname -k system-locale
+      -w /etc/issue -p wa -k system-locale
+      -w /etc/issue.net -p wa -k system-locale
+      -w /etc/hosts -p wa -k system-locale
+      -w /etc/sysconfig/network -p wa -k system-locale
+      -w /etc/selinux/ -p wa -k MAC-policy
+      -w /var/log/lastlog -p wa -k logins
+      -w /var/run/faillock/ -p wa -k logins
+      -w /var/run/utmp -p wa -k session
+      -w /var/log/wtmp -p wa -k session
+      -w /var/log/btmp -p wa -k session
+      -a always,exit -F arch=b64 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod
+      -a always,exit -F arch=b32 -S chmod -S fchmod -S fchmodat -F auid>=1000 -F auid!=4294967295 -k perm_mod
+      -a always,exit -F arch=b64 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod
+      -a always,exit -F arch=b32 -S chown -S fchown -S fchownat -S lchown -F auid>=1000 -F auid!=4294967295 -k perm_mod
+      -a always,exit -F arch=b64 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+      -a always,exit -F arch=b32 -S setxattr -S lsetxattr -S fsetxattr -S removexattr -S lremovexattr -S fremovexattr -F auid>=1000 -F auid!=4294967295 -k perm_mod
+      -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access
+      -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EACCES -F auid>=1000 -F auid!=4294967295 -k access
+      -a always,exit -F arch=b64 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access
+      -a always,exit -F arch=b32 -S creat -S open -S openat -S truncate -S ftruncate -F exit=-EPERM -F auid>=1000 -F auid!=4294967295 -k access
+      -a always,exit -F arch=b64 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts
+      -a always,exit -F arch=b32 -S mount -F auid>=1000 -F auid!=4294967295 -k mounts
+      -a always,exit -F arch=b64 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete
+      -a always,exit -F arch=b32 -S unlink -S unlinkat -S rename -S renameat -F auid>=1000 -F auid!=4294967295 -k delete
+      -w /etc/sudoers -p wa -k scope
+      -w /etc/sudoers.d -p wa -k scope
+      -w /var/log/sudo.log -p wa -k actions
+      -w /sbin/insmod -p x -k modules
+      -w /sbin/rmmod -p x -k modules
+      -w /sbin/modprobe -p x -k modules
+      -a always,exit -F arch=b64 -S init_module -S delete_module -k modules
+
+- name: Ensure auditing for processes that start prior to auditd is enabled
+  lineinfile: dest=/etc/default/grub regexp='^GRUB_CMDLINE_LINUX' line='GRUB_CMDLINE_LINUX="audit=1"'
+
+- name: update the grub2 configuration for auditing
+  shell: |
+    grub2-mkconfig > /boot/grub2/grub.cfg
+  when: ansible_os_family == 'Suse' or ansible_os_family == 'RedHat'
+
+- name: update the grub configuration for auditing
+  shell: |
+    update-grub
+  when: ansible_os_family == 'Debian'
+
+- name: Configure Auditd to have hostname
+  replace:
+    path: "/etc/audit/auditd.conf"
+    regexp: 'name_format = NONE'
+    replace: 'name_format = hostname'
+
+- name: Ensure auditd service is enabled
+  systemd:
+    name: auditd
+    state: started
+    enabled: yes

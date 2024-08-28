@@ -1,0 +1,363 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+
+# -- Namespace of the main rook operator
+operatorNamespace: rook-ceph
+
+# -- The metadata.name of the CephCluster CR
+# @default -- The same as the namespace
+clusterName: rook-ceph-cluster
+
+
+# -- Cluster ceph.conf override
+configOverride:  |
+  [global]
+  public network = {{ internal_subnet }}/{{ internal_cidr }}
+  cluster network = {{ cluster_subnet }}/{{ cluster_cidr }}
+  public addr = ""
+  cluster addr = ""
+
+  # Added by Colm, set to 8 GB, might to to set osd_memory_target_cgroup_limit_ratio
+  [osd]
+  osd_memory_target = 8589934592
+
+  # Added by Colm, set to 16 GB
+  [mds]
+  mds_cache_memory_limit = 17179869184
+
+
+# Enable rook-ceph-tools pod
+toolbox:
+  enabled: true
+
+monitoring:
+  enabled: false
+
+# This must be set the same as the pspEnable parameter in the operator_values.yaml
+pspEnable: true
+
+
+# Rook-Ceph Cluster definition
+cephClusterSpec:
+  # For more details, check https://rook.io/docs/rook/v1.10/CRDs/Cluster/ceph-cluster-crd/
+  cephVersion:
+    #image: quay.io/ceph/ceph:v17.2.5 # This is for CCD 2.26
+    image: quay.io/ceph/ceph:v16.2.11
+    allowUnsupported: false
+  # Disable the crash collector for ceph daemon crash collection
+  crashCollector:
+    disable: true
+  # enable the ceph dashboard for viewing cluster status
+  dashboard:
+    urlPrefix: /
+    enabled: true
+    ssl: true
+  mgr:
+    count: 1
+    allowMultiplePerNode: false
+    modules:
+      - name: pg_autoscaler
+        enabled: true
+  mon:
+    count: 3
+    allowMultiplePerNode: false
+  network:
+    # enable host networking
+    provider: host
+  # enable log collector, daemons will log on files and rotate
+  logCollector:
+    enabled: true
+    periodicity: daily # one of: hourly, daily, weekly, monthly
+    maxLogSize: 500M # SUFFIX may be 'M' or 'G'. Must be at least 1M.
+  dataDirHostPath: /var/lib/rook
+  skipUpgradeChecks: false
+  continueUpgradeAfterChecksEvenIfNotHealthy: false
+  waitTimeoutForHealthyOSDInMinutes: 10
+  placement:
+    cleanup:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.rook-ceph/cluster
+              operator: In
+              values:
+              - any
+              - mon
+              - mgr
+              - osd
+              - non-osd
+      tolerations:
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: any
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: mon
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: mgr
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: non-osd
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: osd
+    mgr:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.rook-ceph/cluster
+              operator: In
+              values:
+              - any
+              - mgr
+              - non-osd
+      tolerations:
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: any
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: non-osd
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: mgr
+    prepareosd:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.rook-ceph/cluster
+              operator: In
+              values:
+              - any
+              - osd
+      tolerations:
+        - key: node-role.rook-ceph/cluster
+          operator: Equal
+          value: any
+          effect: NoSchedule
+        - key: node-role.rook-ceph/cluster
+          operator: Equal
+          value: osd
+          effect: NoSchedule
+    osd:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.rook-ceph/cluster
+              operator: In
+              values:
+              - any
+              - osd
+      tolerations:
+        - key: node-role.rook-ceph/cluster
+          operator: Equal
+          value: any
+          effect: NoSchedule
+        - key: node-role.rook-ceph/cluster
+          operator: Equal
+          value: osd
+          effect: NoSchedule
+    mon:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: node-role.rook-ceph/cluster
+              operator: In
+              values:
+              - any
+              - mon
+              - non-osd
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: rook-ceph-mon
+            topologyKey: topology.rook.io/room
+          weight: 80
+        - podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: rook-ceph-mon
+            topologyKey: topology.rook.io/rack
+          weight: 90
+        - podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app: rook-ceph-mon
+            topologyKey: kubernetes.io/hostname
+          weight: 100
+      tolerations:
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: any
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: mon
+      - key: node-role.rook-ceph/cluster
+        operator: Equal
+        value: non-osd
+
+  resources: null
+
+  # The option to automatically remove OSDs that are out and are safe to destroy.
+  removeOSDsIfOutAndSafeToRemove: false
+
+  # priority classes to apply to ceph resources
+  priorityClassNames:
+    mon: system-node-critical
+    osd: system-node-critical
+    mgr: system-cluster-critical
+
+  storage: # cluster level storage configuration and selection
+    useAllNodes: false
+    useAllDevices: false
+    deviceFilter: "^sd[a-l]"
+    nodes:
+    {% for n in groups["storage_osd"] %}
+      - name: {{ n}}
+    {% endfor %}
+
+# Ceph RBD (Block) configuration
+cephBlockPools:
+  - name: network-block-x3-data
+    spec:
+      failureDomain: host
+      replicated:
+        size: 3
+    # https://rook.io/docs/rook/v1.10/Storage-Configuration/Block-Storage-RBD/block-storage/#provision-storage
+    storageClass:
+      enabled: true
+      name: network-block
+      isDefault: true
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      provisioner: rook-ceph.rbd.csi.ceph.com
+      parameters:
+        clusterID: rook-ceph
+        imageFormat: "2"
+        imageFeatures: layering
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-rbd-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-rbd-node
+        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/fstype: ext4
+        pool: network-block-x3-data
+
+# CephFS (File) Configuration
+cephFileSystems:
+  - name: ccdfs
+    spec:
+      metadataPool:
+        replicated:
+          size: 3
+      dataPools:
+        - failureDomain: host
+          replicated:
+            size: 3
+          name: data0
+      metadataServer:
+        activeCount: 1
+        activeStandby: true
+        resources:
+          limits:
+            cpu: "4000m"
+            memory: "32Gi"
+          requests:
+            cpu: "1000m"
+            memory: "4Gi"
+        priorityClassName: system-cluster-critical
+        placement:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: node-role.rook-ceph/cluster
+                  operator: In
+                  values:
+                  - any
+                  - mds
+                  - non-osd
+          podAntiAffinity:
+            preferredDuringSchedulingIgnoredDuringExecution:
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                    - rook-ceph-mds
+                topologyKey: topology.kubernetes.io/zone
+              weight: 100
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - rook-ceph-mds
+              topologyKey: kubernetes.io/hostname
+          tolerations:
+          - key: node-role.rook-ceph/cluster
+            operator: Equal
+            value: any
+          - key: node-role.rook-ceph/cluster
+            operator: Equal
+            value: non-osd
+          - key: node-role.rook-ceph/cluster
+            operator: Equal
+            value: mds
+    # https://rook.io/docs/rook/v1.10/Storage-Configuration/Shared-Filesystem-CephFS/filesystem-storage/#provision-storage
+    storageClass:
+      enabled: true
+      isDefault: false
+      name: network-file-x3 
+      reclaimPolicy: Delete
+      allowVolumeExpansion: true
+      mountOptions: []
+      provisioner: rook-ceph.cephfs.csi.ceph.com
+      parameters:
+        clusterID: rook-ceph
+        csi.storage.k8s.io/provisioner-secret-name: rook-csi-cephfs-provisioner
+        csi.storage.k8s.io/provisioner-secret-namespace: rook-ceph
+        csi.storage.k8s.io/controller-expand-secret-name: rook-csi-cephfs-provisioner
+        csi.storage.k8s.io/controller-expand-secret-namespace: rook-ceph
+        csi.storage.k8s.io/node-stage-secret-name: rook-csi-cephfs-node
+        csi.storage.k8s.io/node-stage-secret-namespace: rook-ceph
+        csi.storage.k8s.io/fstype: ext4
+        pool: ccdfs-data0
+        fsName: ccdfs
+
+# empty list as Object Storage not needed.
+cephObjectStores: []
+
+# Disable CephFS snapshots
+cephFileSystemVolumeSnapshotClass:
+  enabled: false
+
+#Disable RBD snapshots
+cephBlockPoolsVolumeSnapshotClass:
+  enabled: false
+
+# configure ingress for the dashboard
+ingress:
+  dashboard:
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+      nginx.ingress.kubernetes.io/backend-protocol: HTTPS
+      kubernetes.io/ingress.class: nginx
+      nginx.ingress.kubernetes.io/server-snippet: |
+        proxy_ssl_verify off;
+    host:
+      name: ceph.bmccd5.athtem.eei.ericsson.se
+      path: /
+    tls:
+      - hosts:
+          - ceph.bmccd5.athtem.eei.ericsson.se

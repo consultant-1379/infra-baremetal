@@ -1,0 +1,60 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+{% set header = "Network Address;Start IP;End IP;host_name;OS Name;OS version;CI Type;Location;Usage;Interface description;CPU count;CPU Speed;CPU Type;RAM;Disk;DNS names;Interface Name;MAC Address;CI Resp. Consumer ST;CI Provider ST;Force CI change;OOB Management;CI part of;CI runtime dep;CI Related To;Tags;Service;Service Scope;CI description;DHCP;Is Primary;Consumer Tenant;Other Consumers;Provider Tenant;Network Consumer" %}
+{{ header }}
+{% set parentci = deployment_name %}
+{% set citype = "Server" %}
+{% set ciconsumer = "EST-NM-ATH-SAN-OpenStackInfra" %}
+{% set ciprovider = "GST-IEAT Installation" %}
+{% set consumertenant = "PDU OSS" %}
+{% set providertenant = "LABOPS-IEAT" %}
+{% set location = "Athlone" %}
+{% set usage = "ECCD" %}
+{% set networks = ["internal", "traffic", "nfs", "provisioning", "storage1", "storage2", "cluster", "ilo"] %}
+{% if deployment_name != "bmccd5" %}
+    {% set hostname_list = groups["blades"] if "blades" in groups and groups["blades"] | length > 0 else groups["racks"] %}
+{% else %}
+    {% set hostname_list = groups["blades"] + groups["ceph_racks"] %}
+{% endif %}
+;;;{{ parentci }};;;Cluster;{{ location }};{{ usage }};;;;;;;;;;{{ ciconsumer }};{{ ciprovider }};;;;;;;;;;;;{{ consumertenant }};;{{ providertenant }};
+{% for host in hostname_list %}
+    {% set os_distribution = hostvars[host].ansible_distribution + hostvars[host].ansible_distribution_major_version %}
+    {% for net in networks %}
+        {% set interface = net %}
+        {% if net == "internal" %}
+            {% set address = hostvars[host]["ansible_internal"]["ipv4"]["address"] %}
+            {% if k8s_ip_version is defined and k8s_ip_version == "dualstack" %}
+                {% set address6 = hostvars[host]["ansible_internal"]["ipv6"]["address"] %}
+            {% endif %}
+        {% elif net == "traffic" %}
+            {% set address = hostvars[host]["traffic_ip"]["ipv4"]["address"] %}
+            {% if k8s_ip_version is defined and k8s_ip_version == "dualstack"%}
+                {% set address6 = hostvars[host]["traffic_ip"]["ipv6"]["address"] %}
+            {% endif %}
+        {% elif net == "provisioning" %}
+            {% set address = hostvars[host]["ansible_host"] %}
+            {% set interface = "bond0" %}
+        {% elif net == "ilo" %}
+            {% set address = hostvars[host]["bmc"]["ip"] %}
+            {% set interface = "ilo" %}
+        {% else %}
+            {% if net + "_ip" in hostvars[host] %}
+                {% set address = hostvars[host][net + "_ip"] %}
+            {% endif %}
+        {% endif %}
+        {% if address is defined %}
+        {% set network_cidr = vars[net + '_subnet'] + '/' + vars[net + '_cidr'] | string %}
+{{ network_cidr }};{{ address }};;{{ host.split('-')|first }};{{ os_distribution }};{{ hostvars[host].ansible_distribution_version }};{{ citype }};{{ location }};{{ usage }};;;;;;;;{{ interface }};;{{ ciconsumer }};{{ ciprovider }};;;{{ parentci }};;;;;;;;;{{ consumertenant }};;{{ providertenant }};
+        {% endif %}
+        {% if address6 is defined %}
+        {% set network_cidr_v6 = vars[net + '_subnet_ipv6'] + '/' + vars[net + '_cidr_ipv6'] | string %}
+{{ network_cidr_v6 }};{{ address6 }};;{{ host.split('-')|first  }};{{ os_distribution }};{{ hostvars[host].ansible_distribution_version }};{{ citype }};{{ location }};{{ usage }};;;;;;;;{{ interface }};;{{ ciconsumer }};{{ ciprovider }};;;{{ parentci }};;;;;;;;;{{ consumertenant }};;{{ providertenant }};
+        {% endif %}
+    {% endfor %}{# end of loop over networks #}
+{% endfor %}{# end of loop over hostname_list #}
+{% set network_cidr = internal_subnet + '/' + internal_cidr | string %}{# Internal API VIP #}
+{% set host = groups["master"][0] %}
+{% set os_distribution = hostvars[host].ansible_distribution + hostvars[host].ansible_distribution_major_version %}
+{{ network_cidr }};{{ kube_apiserver_ip }};;{{ host.split('-')|first  }};{{ os_distribution }};{{ hostvars[host].ansible_distribution_version }};{{ citype }};{{ location }};{{ usage }};;;;;;;;internal;;{{ ciconsumer }};{{ ciprovider }};;;{{ parentci }};;;;;;;;{{ consumertenant }};;{{ providertenant }};
+{% set network_cidr = provisioning_subnet + '/' + provisioning_cidr | string %}{# KICKSTART #}
+{% set host = deployment_name + '-ks' %}
+{{ network_cidr }};{{ hostvars["kickstart"]["ansible_host"] }};;{{ host }};{{ hostvars["kickstart"].ansible_distribution }};{{ hostvars["kickstart"].ansible_distribution_version }};Virtual Machine;{{ location }};{{ usage }};;;;;;;;eth0;;{{ ciconsumer }};{{ ciprovider }};;;{{ parentci }};;;;;;;;;{{ consumertenant }};;{{ providertenant }};

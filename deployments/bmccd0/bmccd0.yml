@@ -1,0 +1,139 @@
+---
+
+# Deployment Name
+deployment_name: bmccd0
+
+# Number of master nodes
+master_count: 3
+
+# Re-use existing packer image for KS - set variable to reuse
+# Build new pack image for KS - set variable to new
+reuse_ks_image: reuse
+
+# ILO Network Details
+ilo_cidr: 24
+ilo_subnet: 10.232.179.0
+ilo_netmask: 255.255.255.0
+
+# PXE Network Details
+provisioning_cidr: 26
+provisioning_subnet: 10.232.238.192
+provisioning_netmask: 255.255.255.192
+provisioning_gateway: 10.232.238.193
+provisioning_pool_start: 10.232.238.200
+provisioning_vlan_id: 710
+# Provisioning IP - assigned to physical host
+provisioning_phost_ip: 10.232.238.198
+# BM Kickstart VM IP - used for DHCP
+dhcp_next_server: 10.232.238.199
+
+# Internal Network Details
+internal_cidr: 26
+internal_subnet: 10.232.238.128
+internal_gateway: 10.232.238.129
+internal_pool_start: 10.232.238.135
+internal_cidr_ipv6: 64
+internal_subnet_ipv6: "2001:1b70:82b9:ff::"
+internal_gateway_ipv6: "2001:1b70:82b9:ff::1"
+internal_pool_start_ipv6: "2001:1b70:82b9:ff::7"
+internal_vlan_id: 709
+
+# Provider / Traffic Network Details
+traffic_cidr: 26
+traffic_subnet: 10.232.239.0
+traffic_gateway: 10.232.239.1
+traffic_pool_start: 10.232.239.6
+traffic_cidr_ipv6: 64
+traffic_subnet_ipv6: "2001:1b70:82b9:101::"
+traffic_gateway_ipv6: "2001:1b70:82b9:101::1"
+traffic_pool_start_ipv6: "2001:1b70:82b9:101::7"
+traffic_vlan_id: 711
+
+# NFS Network Details
+nfs_cidr: 26
+nfs_subnet: 10.232.239.64
+nfs_gateway: 10.232.239.65
+nfs_pool_start: 10.232.239.70
+nfs_vlan_id: 407
+
+# Storage Network Details
+storage1_cidr: 26
+storage1_subnet: 10.232.239.128
+storage1_gateway: 10.232.239.129
+storage1_pool_start: 10.232.239.134
+storage1_vlan_id: 408
+
+storage2_cidr: 26
+storage2_subnet: 10.232.239.192
+storage2_gateway: 10.232.239.193
+storage2_pool_start: 10.232.239.198
+storage2_vlan_id: 409
+
+# Public IP assigned to physical host
+physical_host_ip: 10.32.132.136
+
+# virsh storage pool name to deploy kickstart VM E.g. faststore or default
+virsh_storage_pool: faststore
+
+# Set 'all_racks' to True if this deployment is an all rack deployment
+all_racks: no
+
+# Set to yes if Smart Array Controller is present in server, otherwise set to no
+has_smartarray: yes
+
+# Slot of the NIC to use for PXE boot
+# e.g. set to 1 to use the NIC in PCI slot 1 or Embedded if NIC is Embedded
+nic_slot: Embedded
+
+# Rack names - E.g. Tipperary 12a/10*16
+rack_names: 
+  - "00-0012A/11*003"
+# OA IP & cloud user credentials
+oa_ips:
+- 10.232.179.103
+pm_user: cloud
+
+storage_protocol_type: powerflex
+
+# Set to true if using passthrough modules else false if using FC sanswitch
+passthrough: true
+
+# DELL PowerFlex Storage Details
+
+# FQDN of the storage array
+powerflex_host: 10.232.193.254
+# Serial Number of the Unity storage array i.e. CKM00123...
+powerflex_serial: 364148aa7a18960f
+# Service Account Username
+powerflex_user: admin
+# Name of the Pool providing the storage
+powerflex_pool: PD01_FG01
+# PowerFlex Meta Data Manager IP Addresses, comma separated list.
+powerflex_mdm_ip: "10.232.189.254,10.232.190.254"
+# PowerFlex Networks List - E.g. 10.10.10.0/24
+powerflex_networks:
+ - 10.232.189.0/24
+ - 10.232.190.0/24
+
+# PowerStore Settings
+
+# Mgmt IP of the PowerStore
+powerstore_ip: ieatpwrstore-001-cluster.athtem.eei.ericsson.se
+# Service Account Username
+powerstore_user: ostkadmin
+# Name of the NAS Server
+nas_server_name: bmccd0-rwx
+# Network Subnet of the NAS Server E.g. 10.10.10.0/24
+nas_server_subnet: 10.232.151.240/28
+
+# ECFE Configuration
+ecfe_peer_addresses:
+  - 10.232.239.4
+  - 10.232.239.5
+  - 2001:1b70:82b9:101::4
+  - 2001:1b70:82b9:101::5
+ecfe_ip_addresses:
+  - 10.150.12.6
+  - 10.150.12.7
+  - 2001:1b70:82b9:123::10
+  - 2001:1b70:82b9:123::11

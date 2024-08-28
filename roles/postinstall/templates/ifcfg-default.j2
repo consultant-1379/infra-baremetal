@@ -1,0 +1,5 @@
+BOOTPROTO=none
+STARTMODE=auto
+{% if "ceph_racks" in groups and inventory_hostname in groups["ceph_racks"] %}
+ETHTOOL_OPTIONS="speed 10000 duplex full autoneg off"
+{% endif %}

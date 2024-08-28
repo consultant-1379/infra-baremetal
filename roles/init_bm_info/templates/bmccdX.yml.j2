@@ -1,0 +1,203 @@
+---
+
+# Deployment Name
+deployment_name: {{ bm_deployment_name }}
+
+# Number of master nodes
+master_count: {{ num_master_node }}
+
+# Re-use existing packer image for KS - set variable to reuse
+# Build new pack image for KS - set variable to new
+reuse_ks_image: {{ new_ks_image }}
+
+# ILO Network Details
+ilo_cidr: 
+ilo_subnet: 
+ilo_netmask:
+
+# PXE Network Details
+provisioning_cidr: 
+provisioning_subnet: 
+provisioning_netmask: 
+provisioning_gateway: 
+provisioning_pool_start: 
+provisioning_vlan_id: 
+# Provisioning IP - assigned to physical host
+provisioning_phost_ip: 
+# BM Kickstart VM IP - used for DHCP
+dhcp_next_server: 
+
+# Internal Network Details
+internal_cidr: 
+internal_subnet: 
+internal_gateway: 
+internal_pool_start: 
+internal_cidr_ipv6: 64
+internal_subnet_ipv6: 
+internal_gateway_ipv6: 
+internal_pool_start_ipv6: 
+internal_vlan_id: 
+
+# Provider / Traffic Network Details
+traffic_cidr: 
+traffic_subnet: 
+traffic_gateway: 
+traffic_pool_start: 
+traffic_cidr_ipv6: 64
+traffic_subnet_ipv6: 
+traffic_gateway_ipv6: 
+traffic_pool_start_ipv6: 
+traffic_vlan_id: 
+
+{% if storage_type != "ceph" %}
+# NFS Network Details
+nfs_cidr: 
+nfs_subnet: 
+nfs_gateway: 
+nfs_pool_start: 
+nfs_vlan_id:
+{% endif %}
+
+{% if storage_protocol_type == 'powerflex' %}
+# Storage Network Details
+storage1_cidr: 
+storage1_subnet: 
+storage1_gateway: 
+storage1_pool_start: 
+storage1_vlan_id: 
+
+storage2_cidr: 
+storage2_subnet: 
+storage2_gateway: 
+storage2_pool_start: 
+storage2_vlan_id: 
+{% endif %}
+
+{% if storage_type == "ceph" %}
+cluster_cidr: 
+cluster_subnet: 
+cluster_gateway: 
+cluster_pool_start: 
+cluster_vlan_id: 
+{% endif %}
+
+# Public IP assigned to physical host
+physical_host_ip: 
+
+# virsh storage pool name to deploy kickstart VM E.g. faststore or default
+virsh_storage_pool: {{ virsh_storage_pool_image }}
+
+# Set 'all_racks' to True if this deployment is an all rack deployment
+all_racks: {{ all_racks }}
+
+# Set to yes if Smart Array Controller is present in server, otherwise set to no
+has_smartarray: 
+
+# Slot of the NIC to use for PXE boot
+# e.g. set to 1 to use the NIC in PCI slot 1 or Embedded if NIC is Embedded
+nic_slot:
+
+{% if all_racks | bool %}
+# List of iLO IP addresses of rack servers
+ilos:
+ - 
+{% else %}
+# Rack names - E.g. Tipperary 12a/10*16
+rack_names:
+  - ""
+# OA IP & cloud user credentials
+oa_ips:
+- 
+{% endif %}
+pm_user: cloud
+
+storage_protocol_type: {{ storage_protocol_type }}
+
+# Set to true if using passthrough modules else false if using FC sanswitch
+passthrough: 
+
+{% if storage_type == "ceph" %}
+is_ceph: True
+is_dell_deployment: True
+ome:
+  user: stack
+  ip:
+  group: 
+  password: {%raw%}'{{ ome_password }}'{% endraw %}
+{% endif %}
+{% if storage_type == '3par' %}
+# HPE 3PAR Storage Details
+
+# IP address or hostname of the storage array
+hpe3par_ip: 
+# Service Account Username
+hpe3par_user: 
+# Name of the CPG providing the storage
+hpe3par_cpg: 
+# Starting ID of Virtual Volume (VV). This will be incremented automatically by the playbook
+volume_id_start: 150
+# The size of the root disk/boot LUN for each server.
+size: 150
+{% endif %}
+
+{% if storage_type == 'unity' %}
+# DELL Unity Storage Details
+
+# FQDN of the storage array
+unity_host:
+# Serial Number of the Unity storage array i.e. CKM00123...
+unity_serial:  
+# Service Account Username
+unity_user: 
+# Name of the Pool providing the storage
+unity_pool:
+# CLI ID of the storage pool
+unity_pool_id: 
+# The size of the root disk/boot LUN for each server.
+size: 
+{% endif %}
+
+{% if storage_type == 'powerflex' %}
+# DELL PowerFlex Storage Details
+
+# FQDN of the storage array
+powerflex_host:
+# Serial Number of the Unity storage array i.e. CKM00123...
+powerflex_serial:  
+# Service Account Username
+powerflex_user: 
+# Name of the Pool providing the storage
+powerflex_pool:
+# PowerFlex Meta Data Manager IP Addresses, comma separated list.
+powerflex_mdm_ip: 
+# PowerFlex Networks List - E.g. 10.10.10.0/24
+powerflex_networks:
+ - 
+ - 
+{% endif %}
+
+{% if nas_type == 'powerstore' %}
+# PowerStore Settings
+
+# Mgmt IP of the PowerStore
+powerstore_ip: 
+# Service Account Username
+powerstore_user: 
+# Name of the NAS Server
+nas_server_name: 
+# Network Subnet of the NAS Server E.g. 10.10.10.0/24
+nas_server_subnet: 
+{% elif storage_type == "ceph" %}
+{% else %}
+# NAS Settings - E.g. for VA /vx/bmccd1fs
+nfs_nas_ip: 
+nfs_nas_share: 
+{% endif %}
+
+# ECFE Configuration
+ecfe_peer_addresses:
+  - 
+  - 
+ecfe_ip_addresses:
+  - 
+  - 

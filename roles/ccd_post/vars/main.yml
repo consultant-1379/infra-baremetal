@@ -1,0 +1,39 @@
+stable_repo: https://charts.helm.sh/stable
+
+hpe_storage_repo: https://hpe-storage.github.io/co-deployments/
+
+storage_namespace: hpe-storage
+
+storage_backend: hpe-backend
+dockerhub_mirror: armdockerhub.rnd.ericsson.se
+container_registry_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          39313565633733663735303461313539376165306639373161326462313563656630383566306264
+          6331643665326130623331343264313863313132376437350a363234363730336239323336323938
+          66663333303234323334623065376562653166613930393761363362306166313939363762393638
+          3662383538306634300a336637633032623962386331303539336334366532333538336364346332
+          3566
+
+worker_sysctl_settings:
+  - name: net.ipv4.vs.conntrack
+    value: 1
+  - name: net.ipv4.conf.all.rp_filter
+    value: 0
+  - name: net.ipv4.conf.internal.rp_filter
+    value: 0
+  - name: net.ipv4.vs.run_estimation
+    value: 1
+  - name: net.ipv4.vs.conn_reuse_mode
+    value: 0
+  - name: net.ipv4.vs.expire_nodest_conn
+    value: 1
+
+
+
+
+
+
+
+sles15sp2_sdc: EMC-ScaleIO-sdc-3.5-1200.104.sles15.2.x86_64.rpm
+sles15sp3_sdc: EMC-ScaleIO-sdc-3.6-200.105.sles15.3.x86_64.rpm
+sles15sp4_sdc: EMC-ScaleIO-sdc-3.6-700.103.sles15.4.x86_64.rpm

@@ -1,0 +1,33 @@
+# these values override defaults in https://github.com/rook/rook/blob/release-1.10/deploy/charts/rook-ceph/values.yaml
+# Reference: https://rook.io/docs/rook/v1.10/Helm-Charts/operator-chart/
+currentNamespaceOnly: true
+pspEnable: true
+tolerations:
+  - effect: NoSchedule
+    key: node-role.kubernetes.io/control-plane
+discoverDaemonUdev: '(?i)dm-[0-9]+,(?i)rbd[0-9]+,(?i)nbd[0-9]+'
+enableDiscoveryDaemon: true
+unreachableNodeTolerationSeconds: 5
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+discover:
+  nodeAffinity: node-role.rook-ceph/cluster=osd
+  tolerations:
+    - key: node-role.rook-ceph/cluster
+      operator: Exists
+      effect: NoSchedule
+csi:
+  enableGrpcMetrics: true
+  cephfsGrpcMetricsPort: 9092
+  cephfsLivenessMetricsPort: 9082
+  rbdGrpcMetricsPort: 9090
+  rbdLivenessMetricsPort: 9080
+  pluginTolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/control-plane
+      operator: Exists
+  provisionerNodeAffinity: node-role.kubernetes.io/control-plane
+  provisionerTolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/control-plane
+      operator: Exists

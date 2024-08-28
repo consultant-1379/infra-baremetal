@@ -1,0 +1,13 @@
+37c37
+<                                     "iLO 4 v2.72", "iLO 4 v2.75",
+---
+>                                     "iLO 4 v2.72", "iLO 4 v2.74", "iLO 4 v2.75", "iLO 4 v2.77",
+40c40
+<                                     "iLO 5 v2.18"])
+---
+>                                     "iLO 5 v2.18","iLO 5 v2.30","iLO 5 v2.33","iLO 5 v2.42"])
+73c73
+< GEN10 = "Gen10"
+\ No newline at end of file
+---
+> GEN10 = "Gen10"

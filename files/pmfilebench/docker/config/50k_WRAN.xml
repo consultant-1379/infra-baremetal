@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workload>
+	<rop id="15">
+    
+		<!-- Type 1 -->
+		<rns start="1" count="38" numnodeb="37">
+		  <rnc bandwidth="4096">
+			<fileworkload type="XML"  numfiles="1"  filesize="728"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+			<fileworkload type="GPEH" numfiles="11" filesize="6400"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		
+		<!-- Type 1 -->
+		<rns start="39" count="15" numnodeb="37">
+		  <rnc bandwidth="4096">
+			<fileworkload type="XML"  numfiles="1"  filesize="728"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		
+		<!-- Type 2 -->
+		<rns start="54" count="37" numnodeb="45">
+		  <rnc bandwidth="4096">
+			<fileworkload type="XML"  numfiles="1"  filesize="808"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+			<fileworkload type="GPEH" numfiles="6" filesize="12800"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		<!-- Type 2 -->
+		<rns start="91" count="4" numnodeb="45">
+		  <rnc bandwidth="4096">
+			<fileworkload type="XML"  numfiles="1"  filesize="808"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		
+		<!-- Type 3 -->
+		<rns start="95" count="7" numnodeb="214">
+		  <rnc bandwidth="7212">
+			<fileworkload type="XML"  numfiles="1"  filesize="7374"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+			<fileworkload type="GPEH" numfiles="33" filesize="12800"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		
+		<!-- Type 3 -->
+		<rns start="102" count="2" numnodeb="214">
+		  <rnc bandwidth="20562">
+			<fileworkload type="XML"  numfiles="1"  filesize="7374"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		
+		<!-- Type 4 -->
+		<rns start="104" count="1" numnodeb="424">
+		  <rnc bandwidth="7482">
+			<fileworkload type="XML"  numfiles="1"  filesize="23552"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+			<fileworkload type="GPEH" numfiles="33" filesize="12800"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		
+		<!-- Type 5 -->
+		<rns start="105" count="2" numnodeb="334">
+		  <rnc bandwidth="78288">
+			<fileworkload type="XML"  numfiles="1"  filesize="7578"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		
+		<!-- Type 6 -->
+		<rns start="107" count="2" numnodeb="310">
+		  <rnc bandwidth="20751">
+			<fileworkload type="XML"  numfiles="1"  filesize="13312"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+			<fileworkload type="GPEH" numfiles="64" filesize="19200"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+		
+		<!-- Type 7 -->
+		<rns start="109" count="1" numnodeb="424">
+		  <rnc bandwidth="59283">
+			<fileworkload type="XML"  numfiles="1"  filesize="23552"/>
+			<fileworkload type="UETR" numfiles="8"  filesize="102"/>
+			<fileworkload type="CTR"  numfiles="1"  filesize="2150"/>
+		  </rnc>
+		  <nodeb bandwidth="128">
+			<fileworkload type="XML"  numfiles="1"  filesize="30"/>
+		  </nodeb>
+		</rns>
+	</rop>
+	
+	<rop id="1">
+		<!-- Type 1 -->
+		<rns start="39" count="15" numnodeb="0">
+			  <rnc bandwidth="4096">
+				<fileworkload type="GPEH" numfiles="7" filesize="1024"/>
+			  </rnc>
+		</rns>
+		<!-- Type 2 -->
+		<rns start="91" count="4" numnodeb="0">
+			  <rnc bandwidth="4096">
+				<fileworkload type="GPEH" numfiles="4" filesize="2048"/>
+			  </rnc>
+		</rns>
+		<!-- Type 3 -->
+		<rns start="102" count="2" numnodeb="0">
+			  <rnc bandwidth="20562">
+				<fileworkload type="GPEH" numfiles="33" filesize="2048"/>
+			  </rnc>
+		</rns>
+		<!-- Type 5 -->
+		<rns start="105" count="2" numnodeb="0">
+			  <rnc bandwidth="78288">
+				<fileworkload type="GPEH" numfiles="44" filesize="3072"/>
+			  </rnc>
+		</rns>
+		<!-- Type 7 -->
+		<rns start="109" count="1" numnodeb="0">
+			  <rnc bandwidth="59283">
+				<fileworkload type="GPEH" numfiles="64" filesize="3072"/>
+			  </rnc>
+		</rns>
+	
+	</rop>
+
+	<retention type="XML:15"  value="288"/>
+	<retention type="CTR:15"  value="24"/>
+	<retention type="UETR:15" value="24"/>
+	<retention type="GPEH:15" value="24"/>
+	<retention type="GPEH:01" value="360"/>
+  
+	<writesize type="XML" value="64"/>
+	<writesize type="CTR"  value="32"/>
+	<writesize type="UETR" value="32"/>
+	<writesize type="GPEH" value="32"/>
+	
+</workload>	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	

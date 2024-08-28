@@ -1,0 +1,29 @@
+---
+# Clean up Rook and Ceph
+# Must be run toward OSD nodes
+# Disks must support TRIM/UNMAP discards (most SSDs)
+
+- name: Remove Rook dir
+  file:
+    path: /var/lib/rook
+    state: absent
+
+- name: OSD Node Cleanup
+  block:
+    - name: Get all disks using lsblk
+      command: lsblk --nodeps --json --output PATH,VENDOR,SIZE
+      register: lsblk
+
+    - name: Parse lsblk output
+      set_fact:
+        all_disks: "{{ lsblk.stdout | from_json }}"
+
+    - name: Discard blocks from OSD disks
+      command: "blkdiscard -f {{ item.path }}"
+      loop: "{{ all_disks.blockdevices }}"
+      when: item.vendor | trim == osd_disk_vendor
+
+    - name: Remove Ceph LVM device paths
+      shell: ls /dev/mapper/ceph-* | xargs -I% -- dmsetup remove %
+
+  when: inventory_hostname in groups["storage_osd"]

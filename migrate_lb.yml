@@ -1,0 +1,66 @@
+---
+- hosts: kickstart
+  gather_facts: no
+  tags: lb_purge
+  tasks:
+    - name: Find CCD directory
+      find:
+        path: /var/
+        file_type: directory
+        use_regex: yes
+        recurse: yes
+        patterns:
+          - '^eccd'
+      register: find_ccd_install_dir
+
+    - name: Save path to CCD ansible/erikube directory
+      set_fact:
+        eccd_install_dir: "{{ find_ccd_install_dir.files | map(attribute='path') | first }}/ansible/erikube"
+
+    - name: Remove the ingresslb from the CCD deployment
+      shell: "export ANSIBLE_LOG_PATH=/root/$(date '+%Y%m%d%H%M%S')-ingresslb_purge_ansible.log; ansible-playbook -i /root/ccd_inventory.yml playbooks/ingress-lb-purge.yml"
+      args:
+        chdir: '{{ eccd_install_dir }}'
+
+- hosts: localhost
+  gather_facts: no
+  tags: ccd_inventory
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  pre_tasks:
+    - name: Remove ingress_lb group from inventory
+      tower_group:
+        inventory: '{{ deployment_name }}_CCD_deploy'
+        name: ingress_lb
+        state: absent
+        tower_config_file: /.tower_cli.cfg
+  roles:
+     - role: common
+     - role: ccd_create_inventory
+
+- hosts: nodes
+  gather_facts: no
+  become: yes
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  tasks:
+    - name: "Download {{ deployment_name }} kubernetes config file from MinIO bucket"
+      aws_s3:
+        aws_access_key: "{{ minio_access_key }}"
+        aws_secret_key: "{{ minio_secret_key }}"
+        s3_url: "{{ minio_url }}"
+        encrypt: no
+        bucket: de-cni
+        object: "/ccd/{{ deployment_name }}/{{ deployment_name }}.admin.conf"
+        dest: "/tmp/{{ deployment_name }}.admin.conf"
+        mode: get
+        ignore_nonexistent_bucket: True
+      run_once: yes
+      delegate_to: localhost
+
+    - name: Configure CCM & Keepalived
+      import_role: 
+        name: ccd_post
+        tasks_from: keepalived_worker.yml

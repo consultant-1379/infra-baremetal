@@ -1,0 +1,4 @@
+[Service]
+Environment="HTTP_PROXY={{ http_proxy }}"
+Environment="NO_PROXY=localhost,127.0.0.0/8,{{ provisioning_subnet }}/{{ provisioning_cidr }},{{ internal_subnet }}/{{ internal_cidr }},armdocker.rnd.ericsson.se"
+

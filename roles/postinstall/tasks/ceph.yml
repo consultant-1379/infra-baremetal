@@ -1,0 +1,70 @@
+- name: Get list of interfaces
+  setup:
+    filter: ansible_interfaces
+  register: interface_list
+
+- name: Save interface names (Dell nodes)
+  set_fact:
+    if_list: '{{ interface_list["ansible_facts"]["ansible_interfaces"] | select("match","^p[23]p[12]") | sort_versions }}'
+  when: inventory_hostname in groups["ceph_racks"]
+
+- name: Save interface names (HPE nodes)
+  set_fact:
+    if_list: '{{ interface_list["ansible_facts"]["ansible_interfaces"] | select("match","^en[ops]") | sort_versions }}'
+  when: inventory_hostname not in groups["ceph_racks"]
+
+- name: "Ensure ifcfg-nfs network file does not exist"
+  file:
+    path: '/etc/sysconfig/network/ifcfg-nfs'
+    state: absent
+
+- name: Copy /etc/sysconfig/network/config
+  copy:
+    src: network_config
+    dest: /etc/sysconfig/network/config
+
+- name: Copy network config files
+  template:
+    src: 'ifcfg-default.j2'
+    dest: '/etc/sysconfig/network/ifcfg-{{item}}'
+  loop: '{{ if_list }}'
+
+- name: Create bond0 and traffic interfaces
+  template:
+    src: '{{ ifcfg_template }}'
+    dest: '/etc/sysconfig/network/{{ ifcfg_template | regex_replace("ceph/|.j2","") }}'
+  loop: 
+    - ceph/ifcfg-bond0.j2
+    - ceph/ifcfg-traffic.j2
+    - ceph/ifroute-traffic.j2
+    - ceph/ifroute-bond0.j2
+  loop_control:
+    loop_var: ifcfg_template
+  when: inventory_hostname not in groups["ceph_racks"]
+
+- name: Create bond1 and internal interfaces
+  template:
+    src: '{{ ifcfg_template }}'
+    dest: '/etc/sysconfig/network/{{ ifcfg_template | regex_replace("ceph/|.j2","") }}'
+  loop: 
+    - ceph/ifcfg-bond1.j2
+    - ceph/ifcfg-internal.j2
+  loop_control:
+    loop_var: ifcfg_template
+  # notify: restart_wicked
+
+- name: Create bond2 interfaces
+  template:
+    src: '{{ ifcfg_template }}'
+    dest: '/etc/sysconfig/network/{{ ifcfg_template | regex_replace("ceph/|.j2","") }}'
+  loop_control: 
+    loop_var: ifcfg_template
+  loop: 
+    - ceph/ifcfg-bond2.j2
+    - ceph/ifcfg-cluster.j2
+  # notify: restart_wicked
+  when: inventory_hostname in groups["storage_osd"]
+
+# Only needed for 25GB NICS in DELL Servers
+# - name: Lock Kernel packages
+#   command: zypper al -t package kernel*

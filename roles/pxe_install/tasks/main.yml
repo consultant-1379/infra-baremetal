@@ -1,0 +1,164 @@
+---
+
+- name: Power off servers
+  uri:
+    force_basic_auth: yes
+    method: POST
+    body: '{"ResetType": "ForceOff"}'
+    body_format: json
+    headers:
+      Accept: application/json
+    user: "{{ hostvars[item].bmc.user }}"
+    password: "{{ hostvars[item].bmc.password }}"
+    url: "https://{{ hostvars[item].bmc.ip }}/{{ redfish_system_path[hostvars[item].bmc.type] }}/Actions/ComputerSystem.Reset/"
+    validate_certs: no
+    status_code:
+      - 200 # HP OK
+      - 204 # Dell OK
+      - 400 # HP already off
+      - 409 # Dell already off
+  loop: "{{ servers }}"
+
+- name: Check power state is Off
+  uri:
+    force_basic_auth: yes
+    method: GET
+    headers:
+      Accept: application/json
+    user: "{{ hostvars[item].bmc.user }}"
+    password: "{{ hostvars[item].bmc.password }}"
+    url: "https://{{ hostvars[item].bmc.ip }}/{{ redfish_system_path[hostvars[item].bmc.type] }}/"
+    validate_certs: no
+    return_content: yes
+  loop: "{{ servers }}"
+  register: power_state
+  until: power_state.json.PowerState == 'Off'
+  retries: 6
+  delay: 10
+
+- name: Get PXE boot target
+  uri:
+    force_basic_auth: yes
+    method: GET
+    return_content: yes
+    headers:
+      Accept: application/json
+    user: "{{ hostvars[item].bmc.user }}"
+    password: "{{ hostvars[item].bmc.password }}"
+    url: "https://{{ hostvars[item].bmc.ip }}/{{ redfish_system_path[hostvars[item].bmc.type] }}/"
+    validate_certs: no
+  loop: "{{ servers }}"
+  register: uefi_targets
+
+- name: Set hw_type variable (HPE)
+  set_fact:
+    hw_type: '{{ "hp_gen9" if "Gen9" in uefi_targets.results |rejectattr("json.Manufacturer","equalto","Dell Inc.") |map(attribute="json.Model") |first else "hp_gen10" }}'
+
+- name: Set Boot Source override key depending on hw_type variable (HPE)
+  set_fact:
+    boot_targets_key: '{{ "UefiTargetBootSourceOverrideSupported" if hw_type == "hp_gen9" else "UefiTargetBootSourceOverride@Redfish.AllowableValues" }}'
+
+- name: Get PXE boot targets for HPE servers
+  set_fact:
+    boot_targets: '{{ boot_targets|default([]) + [
+                      item.json.Boot[boot_targets_key] |
+                      select("contains","IPv4") |
+                      reject("contains","Uri")  |
+                      sort | first ] }}'
+  loop: '{{ uefi_targets.results }}'
+  loop_control:
+    label: "{{ item.item }}"
+  when: hostvars[item.item].bmc.type == "hp"
+
+- name: Get list of HPE Servers from Inventory
+  set_fact:
+    hpe_servers: '{{ hpe_servers|default([]) + [item] }}'
+  loop: "{{ servers }}"
+  when: hostvars[item].bmc.type == "hp"
+
+- name: Set HPE servers to PXE boot
+  uri:
+    force_basic_auth: yes
+    method: PATCH
+    body: '{{ set_pxe_body[hostvars[item].bmc.type][hw_type] }}'
+    body_format: json
+    headers:
+      Accept: application/json
+    user: "{{ hostvars[item].bmc.user }}"
+    password: "{{ hostvars[item].bmc.password }}"
+    url: "https://{{ hostvars[item].bmc.ip }}/{{ redfish_system_path[hostvars[item].bmc.type] }}/"
+    validate_certs: no
+  vars:
+    pxe_boot_target: '{{ boot_targets[server_index] }}'
+  loop: "{{ hpe_servers }}"
+  loop_control:
+    index_var: server_index
+
+- name: Get list of DELL Servers from Inventory
+  set_fact:
+    dell_servers: '{{ dell_servers|default([]) + [item] }}'
+  loop: "{{ servers }}"
+  when: hostvars[item].bmc.type == "dell"
+
+- name: Set Dell servers to PXE boot
+  uri:
+    force_basic_auth: yes
+    method: PATCH
+    body: '{{ dell_pxe_body }}'
+    body_format: json
+    headers:
+      Accept: application/json
+    user: "{{ hostvars[item].bmc.user }}"
+    password: "{{ hostvars[item].bmc.password }}"
+    url: "https://{{ hostvars[item].bmc.ip }}/{{ redfish_system_path[hostvars[item].bmc.type] }}/"
+    validate_certs: no
+  loop: "{{ dell_servers }}"
+  when: dell_servers is defined and dell_servers|length >0
+
+- name: Power on servers
+  uri:
+    force_basic_auth: yes
+    method: POST
+    body: '{"ResetType": "On"}'
+    body_format: json
+    headers:
+      Accept: application/json
+    user: "{{ hostvars[item].bmc.user }}"
+    password: "{{ hostvars[item].bmc.password }}"
+    url: "https://{{ hostvars[item].bmc.ip }}/{{ redfish_system_path[hostvars[item].bmc.type] }}/Actions/ComputerSystem.Reset/"
+    validate_certs: no
+    status_code:
+      - 200 # HP OK
+      - 204 # Dell OK
+  loop: "{{ servers }}"
+  loop_control:
+    pause: "{{ start_delay }}"
+
+- name: Check power state is On
+  uri:
+    force_basic_auth: yes
+    method: GET
+    headers:
+      Accept: application/json
+    user: "{{ hostvars[item].bmc.user }}"
+    password: "{{ hostvars[item].bmc.password }}"
+    url: "https://{{ hostvars[item].bmc.ip }}/{{ redfish_system_path[hostvars[item].bmc.type] }}/"
+    validate_certs: no
+    return_content: yes
+  loop: "{{ servers }}"
+  register: power_state
+  until: power_state.json.PowerState == 'On'
+  retries: 60
+  delay: 10
+
+# Wait for port 22 to become open and contain "OpenSSH"
+- name: Wait for servers to come up (max 1 hour)
+  wait_for:
+    port: 22
+    host: "{{ hostvars[item].ansible_host }}"
+    search_regex: OpenSSH
+    connect_timeout: 2
+    delay: 5
+    timeout: 3600
+  loop: "{{ servers }}"
+  #no_log: True

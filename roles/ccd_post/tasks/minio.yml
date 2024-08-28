@@ -1,0 +1,33 @@
+- name: Upload admin.conf to MinIO
+  block:
+    - name: Create Object {{ deployment_name }} on MinIO
+      aws_s3:
+        aws_access_key: "{{ minio_access_key }}"
+        aws_secret_key: "{{ minio_secret_key }}"
+        s3_url: "{{ minio_url }}"
+        bucket: de-cni
+        object: /ccd/{{ deployment_name }}
+        mode: create
+        ignore_nonexistent_bucket: True
+      failed_when: false
+
+    - name: Replace admin url in K8s conf file {{ deployment_name }}.admin.conf
+      replace:
+        path: "/tmp/{{ deployment_name }}.admin.conf"
+        regexp: "https://nodelocal-api.eccd.local:6443"
+        replace: "https://api.{{ deployment_name }}.athtem.eei.ericsson.se"
+
+    - name: Upload deployment files into MinIO bucket
+      aws_s3:
+        aws_access_key: "{{ minio_access_key }}"
+        aws_secret_key: "{{ minio_secret_key }}"
+        s3_url: "{{ minio_url }}"
+        encrypt: no
+        bucket: de-cni
+        object: "/ccd/{{ deployment_name }}/{{ deployment_name }}.admin.conf"
+        src: "/tmp/{{ deployment_name }}.admin.conf"
+        mode: put
+        ignore_nonexistent_bucket: True
+
+  delegate_to: localhost
+  run_once: yes

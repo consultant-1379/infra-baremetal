@@ -1,0 +1,79 @@
+*** Blade Profile Definition ***
+----------------------------------
+#Basic Structure:
+
+#[PROF NAME]
+#port 1 info
+#port 2 info
+#..
+#[END]
+
+#Also multiple profiles can be specified as follows
+
+#[PROF NAME1, PROF_NAME2, PROF_NAME3]
+#port 1 info
+#port 2 info
+#..
+#[END]
+
+Port info is specified as follows:
+
+PortNumber,PortType,PXE,PortSpeed,Uplink,Network1:UnTagged:UpLinkSet:NetworkMaxSpeed [Network2:UnTagged:UpLinkSet:NetworkMaxSpeed] ...
+
+PortNumber			<number>
+
+PortType			SN|MN
+                    SN - Single Network
+                    MN - Multiple Network
+
+PXE 				enabled|disabled
+                    enabled - PXE boot enabled on the port
+                    disabled - PXE boot disabled on the port
+
+PortSpeed  		 	auto|preferred|<speed in Mb>
+                    auto - the maximum port speed is constrained by maximum configured speed for the network
+                    preferred - the speed of the port is the same as the preferred speed of the network
+                    <speed in Mb> - custom port speed in Mb
+
+Uplink  			none|<SharedUplinkSet name>
+                    none - SharedUplinkSet is not defined
+                    <SharedUplinkSet name> - SharedUplinkSet name (e.g. uplink_A) is a key with corresponding value
+                        defined in SED
+--------------------------------------------------------------------------------
+Network1:Untagged:UplinkSet:NetworkMaxSpeed
+
+Network1     		<network name> or unassigned
+
+Untagged			true|false
+                    true - network vlan untagged, network can be used to PXE boot
+                    false - network vlan tagged
+
+UplinkSet			true|false
+                    true -  network is part of SharedUplinkSet, when set to true Uplink in port definition
+                        and VLAN_ID in SED have to be defined
+                    false - network is not part of SharedUplinkSet
+
+NetworkMaxSpeed		none|<number in Mb>
+                    none - network speed unrestricted
+                    <number in Mb> - custom max speed, any speed from 100Mb to MAX configurable (on FLEX10 10000Mb)
+                        in 100Mb increments
+
+#######################################
+# DE OpenStack Infra team VC Profiles #
+#######################################
+
+[OpenStack_Profile]
+1,MN,enabled,auto,uplink_A,provisioning_A:true:true:none,external_A:false:true:none,internal_api_A:false:true:none,vxlan_A:false:true:none,public_tenant_A:false:true:none,floating_A:false:true:none
+2,MN,disabled,auto,uplink_B,provisioning_B:true:true:none,external_B:false:true:none,internal_api_B:false:true:none,vxlan_B:false:true:none,public_tenant_B:false:true:none,floating_B:false:true:none
+[END]
+
+[CCD_BM_Profile]
+1,MN,enabled,auto,uplink_A,provisioning_A:true:true:none,traffic_A:false:true:none,nfs_A:false:true:none,internal_A:false:true:none
+2,MN,disabled,auto,uplink_B,provisioning_B:true:true:none,traffic_B:false:true:none,nfs_B:false:true:none,internal_B:false:true:none
+[END]
+
+
+[CCD_BM_CEPH_Profile]
+1,MN,enabled,auto,uplink_A,provisioning_A:true:true:none,traffic_A:false:true:none,internal_A:false:true:none
+2,MN,disabled,auto,uplink_B,provisioning_B:true:true:none,traffic_B:false:true:none,internal_B:false:true:none
+[END]

@@ -1,0 +1,43 @@
+0a1
+> import base64
+103,114c104,108
+<         auth_data = {'UserName': self._username, 'Password': self._password}
+<         try:
+<             response = self.post(RESTSESSIONPATH, data=auth_data)
+<         except HWRestBadRequestException:
+<             raise HWAuthenticationException(
+<                 'Error logging into iLO session. Bad username or password', 1)
+<         if not response.status == httplib.CREATED:
+<             raise HWRestException('Error logging into iLO session', 1)
+< 
+<         self._session_url = self.get_path_from_url(
+<             response.headers['location'])
+<         self.headers.update({'x-auth-token': response.headers['x-auth-token']})
+---
+>         # HTTP Session logic removed as it was unreliable
+>         # reverting to Basic Auth
+>         auth= base64.b64encode("{0}:{1}".format(self._username,self._password))
+>         auth = "Basic " + auth
+>         self.headers.update({ "Accept": "application/json", "Authorization": auth})
+124,131c118,119
+<             response = self.delete(self._session_url)
+<             if response.status not in SUCCESS_HTTP_STATUS_CODES:
+<                 raise HWRestException('Error logging out of iLO session', 1)
+<             self.headers.pop('x-auth-token')
+<         else:
+<             self.log.debug('Unauthorized logout attempt. '
+<                            'Cannot logout when not logged in.')
+<             raise HWAuthenticationException('Unauthorized logout attempt.', 1)
+---
+>             del self.headers["Authorization"]
+>         # HTTP Session logic removed
+141c129,130
+<         return 'x-auth-token' in self.headers
+---
+>         return  "Authorization" in self.headers
+>         # HTTP Session logic removed
+155c144
+<         return msgid
+\ No newline at end of file
+---
+>         return msgid

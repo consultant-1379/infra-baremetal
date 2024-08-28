@@ -1,0 +1,46 @@
+{%raw%}{
+    "variables": {
+      "centos_password": {%endraw%}"{{ centosadm_password }}"{%raw%}
+    },
+
+    "builders": [
+      {
+        "vm_name": {%endraw%}"{{ ks_img_name }}"{%raw%},
+        "qemu_binary": "qemu-kvm",
+        "disk_size": "200G",
+        "net_device": "virtio-net",
+        "net_bridge": {%endraw%}"{{ deployment_name }}_pxe"{%raw%},
+
+        "iso_urls": [
+          "http://{%endraw%}{{ repo_ip_address }}/{{ repo_folder }}/{{ packer_base_img }}{%raw%}"
+        ],
+        "iso_checksum": "sha256:e33d7b1ea7a9e2f38c8f693215dd85254c3a4fe446f93f563279715b68d07987",
+        "iso_target_path": "iso",
+        "output_directory": "output_bm_ks",
+        "ssh_host": {%endraw%}"{{ dhcp_next_server }}"{%raw%},
+        "ssh_username": "centos",
+        "ssh_password": "{{ user `centos_password` }}",
+        "ssh_wait_timeout": "20m",
+
+        "http_directory": "http",
+        "boot_command": [
+          "<tab> text ip={%endraw%}{{ dhcp_next_server }}::{{ provisioning_gateway }}:{{ provisioning_netmask }}{%raw%}:ieatpacker:eth0:none ks=http://{{.HTTPIP}}:{{.HTTPPort}}/bm-ks.cfg<enter><wait>"
+        ],
+        "boot_wait": "2s",
+        "shutdown_command": "echo '{{ user `centos_password` }}' | sudo -S shutdown -P now",
+        "type": "qemu",
+        "headless": false,
+        "display": "none",
+        "memory": "8192",
+        "cpus": 4
+      }
+    ],
+    "provisioners": [
+    {
+      "type": "ansible",
+      "playbook_file": "./bm_kickstart.yml",
+      "user": "centos",
+      "host_alias": "bm_kickstart_vm"
+    }
+    ]
+  }{%endraw%}

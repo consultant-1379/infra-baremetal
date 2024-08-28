@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workload>
+  <rop id="15">
+    
+    <!-- enodeb Type 1 -->
+    <rns start="1" count="1" numnodeb="90">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="180"/>
+        <fileworkload type="CTR"  numfiles="2"  filesize="1532"/>
+        <fileworkload type="UETR" numfiles="1" filesize="600"/>
+        <fileworkload type="EBSL" numfiles="1" filesize="4"/>
+      </nodeb>
+    </rns> 
+	<!-- enodeb Type 2 -->
+    <rns start="2" count="1" numnodeb="3710">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="180"/>
+        <fileworkload type="CTR"  numfiles="2"  filesize="1532"/>
+        <fileworkload type="EBSL" numfiles="1" filesize="4"/>
+      </nodeb>
+    </rns>
+    <!-- radionode Type 1 -->
+    <rns start="3" count="1" numnodeb="160">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="125"/>
+        <fileworkload type="CTR"  numfiles="2"  filesize="1532"/>
+        <fileworkload type="UETR" numfiles="1" filesize="600"/>
+        <fileworkload type="EBSL" numfiles="1" filesize="1"/>
+      </nodeb>
+    </rns> 
+    <!-- radionode Type 2 -->
+    <rns start="4" count="1" numnodeb="3600">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="125"/>
+        <fileworkload type="CTR"  numfiles="2"  filesize="1532"/>
+        <fileworkload type="EBSL" numfiles="1" filesize="1"/>
+      </nodeb>
+    </rns> 
+    <!-- radionode Type 3 -->
+    <rns start="5" count="1" numnodeb="2500">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="125"/>
+        <fileworkload type="EBSL" numfiles="1" filesize="1"/>
+        <fileworkload type="CTRCUCP"  numfiles="1"  filesize="640"/>
+        <fileworkload type="CTRCUUP"  numfiles="1"  filesize="324"/>
+        <fileworkload type="CTRDU" numfiles="1" filesize="773"/>
+      </nodeb>
+    </rns> 
+    <!-- SGSN-MME Type 1 -->
+    <rns start="6" count="1" numnodeb="40">
+      <nodeb bandwidth="81920">
+        <fileworkload type="XML"  numfiles="1"  filesize="184"/>
+        <fileworkload type="CTR"  numfiles="1"  filesize="10112"/>
+        <fileworkload type="UETR" numfiles="1" filesize="1024"/>
+        <fileworkload type="EBSM3GP" numfiles="1" filesize="1890"/>
+        <fileworkload type="EBSMENIQ"  numfiles="1"  filesize="66"/>
+      </nodeb>
+    </rns> 
+    <!-- MTAS Type 1 -->
+    <rns start="7" count="1" numnodeb="15">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="184"/>
+      </nodeb>
+    </rns> 
+    <!-- MGW Type 1 -->
+    <rns start="8" count="1" numnodeb="75">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="184"/>
+      </nodeb>
+    </rns> 
+    <!-- Router 6672 Type 1 -->
+    <rns start="9" count="1" numnodeb="600">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="250"/>
+      </nodeb>
+    </rns> 
+    <!-- FrontHall Type 1 -->
+    <rns start="10" count="1" numnodeb="50">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="15"/>
+      </nodeb>
+    </rns> 
+    <!-- EPG Type 1 -->
+    <rns start="11" count="1" numnodeb="25">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="2"  filesize="1840"/>
+      </nodeb>
+    </rns> 
+    <!-- DSC Type 1 -->
+    <rns start="12" count="1" numnodeb="15">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="6"/>
+      </nodeb>
+    </rns> 
+    <!-- Router 6274 Type 1 -->
+    <rns start="13" count="1" numnodeb="25">
+      <nodeb bandwidth="3072">
+        <fileworkload type="XML"  numfiles="1"  filesize="2560"/>
+      </nodeb>
+    </rns> 
+  </rop>
+  <rop id="1">
+    <!-- SGSN-MME Type 1 -->
+    <rns start="6" count="1" numnodeb="40">
+      <nodeb bandwidth="81920">
+            <fileworkload type="EBM" numfiles="4" filesize="10000"/>
+      </nodeb>
+    </rns>
+    <!-- MTAS Type 1 -->
+    <rns start="7" count="1" numnodeb="15">
+      <nodeb bandwidth="3072">
+            <fileworkload type="XML" numfiles="1" filesize="184"/>
+      </nodeb>
+    </rns>
+    <!-- DSC Type 1 -->
+    <rns start="12" count="1" numnodeb="15">
+      <nodeb bandwidth="3072">
+            <fileworkload type="XML" numfiles="1" filesize="6"/>
+      </nodeb>
+    </rns>
+ </rop>
+
+  <retention type="XML:15"  value="288"/>
+  <retention type="XML:01"  value="12"/>
+  <retention type="CTR:15"  value="24"/>
+  <retention type="CTRCUCP:15"  value="24"/>
+  <retention type="CTRCUUP:15"  value="24"/>
+  <retention type="CTRDU:15"  value="24"/>
+  <retention type="EBSL:15"  value="288"/>
+  <retention type="UETR:15" value="24"/>
+  <retention type="GPEH:15" value="24"/>
+  <retention type="GPEH:01" value="24"/>
+  <retention type="EBSM3GP:15" value="288"/>
+  <retention type="EBSMENIQ:15" value="288"/>
+  <retention type="EBM:01" value="12"/>
+  
+  <writesize type="XML" value="64"/>
+  <writesize type="CTR"  value="32"/>
+  <writesize type="CTRCUCP"  value="32"/>
+  <writesize type="CTRCUUP"  value="32"/>
+  <writesize type="CTRDU"  value="32"/>
+  <writesize type="UETR" value="32"/>
+  <writesize type="EBSL" value="32"/>
+  <writesize type="EBM" value="32"/>
+  <writesize type="GPEH" value="32"/>
+  <writesize type="EBSMENIQ" value="32"/>
+  <writesize type="EBSM3GP" value="32"/>
+   
+</workload>

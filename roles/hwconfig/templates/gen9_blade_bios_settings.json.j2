@@ -1,0 +1,91 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+{% raw %}
+{
+    "bios_settings": {
+        "PowerProfile": {
+            "Description": "Sets Power profile of the system",
+            "default": "MaxPerf",
+            "valid_values": ["MaxPerf", "MinPower", "BalancedPowerPerf", "Custom"]
+        },
+        "BootMode": {
+            "Description": "Sets boot mode of the system",
+            "default": "Uefi",
+            "valid_values": ["Uefi", "LegacyBios"]
+        },{% endraw %}
+        {% if powerflex_host is not defined or is_ceph is not defined %}{% raw %}
+        "FCScanPolicy": {
+            "Description": "Scan configured or all FC targets",
+            "default": "AllTargets",
+            "valid_values": ["AllTargets","CardConfig"]
+        },{% endraw %}
+        {% endif %}
+        {% if powerflex_host is defined or is_ceph is defined %}{% raw %}
+        "EmbSasEnable": {
+            "Description": "Enables or disables local disks",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },{% endraw %}
+        {% else %}{% raw %}
+        "EmbSasEnable": {
+            "Description": "Enables or disables local disks",
+            "default": "Disabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },{% endraw %}
+        {% endif %}{% raw %}
+        "PciSlot1Enable": {
+            "Description": "Enables or disables HB Mezzanine card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "PciSlot2Enable": {
+            "Description": "Enables or disables HBA Mezzanine card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "FlexLom1Enable": {
+            "Description": "Enable or disable FlexLom1 10Gb Card",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "EmbeddedUserPartition": {
+            "Description": "When enabled a 1 GB partition may be visible to the OS affecting installs",
+            "default": "Disabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "VirtualInstallDisk": {
+            "Description": "When enabled it may appear as a drive to the OS affecting installs",
+            "default": "Disabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "ProcVirtualization": {
+            "Description": "Virtualization Setting for KVM environments",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "ProcHyperthreading": {
+            "Description": "When enabled each physical processor core operates as two logical processor cores",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "IntelProcVtd": {
+            "Description": "Uses hardware capabilities provided by Intel Virtualization technology for directed I/O",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "Sriov": {
+            "Description": "Enables a hypervisor to create virtual instances of a PCI-express device, potentially increasing performance",
+            "default": "Enabled",
+            "valid_values": ["Disabled", "Enabled"]
+        },
+        "VirtualSerialPort": {
+            "Description": "Assigns the logical COM port address and associated default resources used by VSP",
+            "default": "Com1Irq4",
+            "valid_values": ["Com2Irq3", "Com1Irq4", "Disabled"]
+        },
+        "ServerName": {
+            "Description": "Server name as displayed in the iLO and BIOS",
+            "default": "%node_host_name%",
+            "valid_values": ["%node_host_name%"]
+        }
+    }
+}{% endraw %}

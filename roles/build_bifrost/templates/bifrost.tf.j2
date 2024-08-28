@@ -1,0 +1,72 @@
+resource "libvirt_volume" "bm_bifrost_base"{
+  name = "{{ bifrost_img_name }}"
+  pool = "{{ virsh_storage_pool }}"
+  format = "qcow2"
+  
+}
+resource "libvirt_volume" "{{ bifrost_shortname }}_vol"{
+  name = "{{bifrost_shortname}}_vol"
+  base_volume_id = libvirt_volume.bm_bifrost_base.id
+  size = 107374182400
+  pool = "{{ virsh_storage_pool }}"
+}
+# Use CloudInit to add our ssh-key to the instance
+resource "libvirt_cloudinit_disk" "{{ bifrost_shortname }}_cloudinit_disk" {
+  name = "{{ bifrost_shortname }}_cloudinit_disk"
+  pool = "{{ virsh_storage_pool }}"
+  user_data = <<EOF
+#cloud-config
+chpasswd:
+  expire: False
+  list:
+    - root:$6$E51mzxRrIpCT/zIj$Q8bGio97MfBli36vN91W4.BRr2f9KPKiZB3ofK/naO8B8jWetsZTUYj6otKIIY29XPWuKpoF1g6Cbd3ok8vo51
+
+local-hostname: "{{ bifrost_shortname }}"
+disable_root: false
+ssh_pwauth: true
+timezone: Europe/Dublin
+users:
+  - name: root
+runcmd:
+  - ssh-keygen -t ed25519 -f /root/.ssh/id_ed25519 -N ""
+  - sed -i -e 's/^UseDNS.*/UseDNS no/g' /etc/ssh/sshd_config
+  - sed -i -e 's/^#PermitRootLogin.*/PermitRootLogin yes/g' /etc/ssh/sshd_config
+  - systemctl restart sshd
+ssh_authorized_keys:
+  - {{ lookup("file", "awx_ssh.pub")}}
+EOF
+network_config = file("bifrost_net_config")
+meta_data = <<EOF
+instance-id: "{{ bifrost_shortname }}-001"
+local-hostname: "{{ bifrost_shortname }}"
+EOF
+}
+
+resource "libvirt_domain" "{{ bifrost_shortname }}" {
+  name = "{{ bifrost_shortname }}"
+  memory = "8192"
+  cpu =  {
+    mode = "host-passthrough"
+  }
+  vcpu = 4
+  console {
+    type        = "pty"
+    target_port = "0"
+    target_type = "serial"
+  }
+  network_interface {
+    bridge= var.prov_bridge
+
+  }
+  cloudinit = libvirt_cloudinit_disk.{{ bifrost_shortname }}_cloudinit_disk.id
+  disk {
+   volume_id = libvirt_volume.{{ bifrost_shortname }}_vol.id
+  }
+  video {
+    type = "vga"
+  }
+  graphics {
+    type = "vnc"
+    listen_type = "address"
+ }
+}

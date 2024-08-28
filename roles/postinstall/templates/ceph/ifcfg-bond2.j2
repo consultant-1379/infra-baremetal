@@ -1,0 +1,9 @@
+STARTMODE=auto
+BOOTPROTO=none
+BOOTPROTO=static
+BONDING_MASTER=yes
+BONDING_SLAVE_0={{ if_list[2] }}
+BONDING_SLAVE_1={{ if_list[3] }}
+{# racks have 2 tier mlag - need xmit_hash_policy set #}
+BONDING_MODULE_OPTS='mode=4 miimon=100 xmit_hash_policy=layer3+4'
+MTU=9000

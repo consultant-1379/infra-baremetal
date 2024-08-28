@@ -1,0 +1,39 @@
+all_racks: False
+is_hpe_deployment: True
+is_dell_deployment: False
+use_proxy: True
+http_proxy: http://atproxy2.athtem.eei.ericsson.se:3128
+
+chassis_halves:
+  top: 'number(BAY/CONNECTION/text())<=8'
+  bottom: 'number(BAY/CONNECTION/text())>8'
+
+blade_selector: '{{ chassis_halves[chassis_half] if chassis_half is defined else "*" }}'
+# IPMI credentials for individual servers
+pm_user: cloud
+pm_password:
+pm_type: pxe_ipmitool
+
+# iLO/iDRAC IP addresses of the controller nodes
+# When generating the instackenv.json (RHOSP) or servers.yml (SuSE) the corresponding
+# servers will be tagged as controllers. The remaining servers will be tagged as compute nodes.
+ctrl_ilo_ips: []
+
+# List of OA IP addresses for deployments where all servers are HPE blades or
+# where the controllers are Dell rack servers and the computes are HPE blades.
+# Dummy IP addresses have been entered below. Replace these with the correct addresses.
+oa_ips: []
+
+# For deployments where all servers are Dell rack servers
+ome:
+  ip:
+  user:
+  password:
+  # Group name in OME e.g. Cloud-12
+  group:
+  # ilo hostname of the director host
+  director_host:
+
+# Set one of these variables to 'True' depending your deployment type HPE or Dell servers
+# is_hpe_deployment: False
+# is_dell_deployment: False

@@ -1,0 +1,24 @@
+---
+- name: Configure VC and Server Profiles
+  shell: "/opt/ericsson/hw_comm/bin/hw_comm.sh -r -y configure_vc {{ deployment_name }}_sed"
+  when: not all_racks
+
+- name: Configure Logical Drive for Rack servers
+  uri:
+    url: 'https://{{ server.ilo_ip }}/redfish/v1/Systems/1/smartstorageconfig/settings'
+    url_username: '{{ pm_user }}'
+    url_password: '{{ pm_password }}'
+    force_basic_auth: yes
+    validate_certs: no
+    headers:
+      Content-Type: "application/json"
+    method: PUT
+    src: logical_drive.json
+  loop: '{{ nodes }}'
+  loop_control:
+    loop_var: server
+    label: '{{ server.name }}'
+  when: all_racks and has_smartarray
+
+- name: Configure BIOS Settings
+  shell: "/opt/ericsson/hw_comm/bin/hw_comm.sh -r -y configure_bios {{ deployment_name }}_sed"

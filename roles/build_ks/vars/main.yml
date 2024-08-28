@@ -1,0 +1,25 @@
+# Proxy Settings
+use_proxy: True
+
+# Kickstart name in DNS
+kickstart_shortname: "{{ lookup('dig',dhcp_next_server + '/PTR','@' + dns_servers|first).split('.')|first }}"
+
+# qcow2 image name for KS VM
+ks_img_name: bm-ks-img.qcow2
+
+centosadm_password: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          35323832663562306639356537373466353531376634626266343265333035326363353130383130
+          3831653231656437666639613963363964383236663561630a353235386262666334373537366338
+          65623936383038613035626136613439376532616435653632366565666532376165616330633331
+          6664336532646136360a623665396165626639396362343365656635313535646235353462383532
+          3061
+
+# ISO image to be used when building new images via packer E.g. CentOS-7-x86_64-DVD-1908.iso
+packer_base_img: CentOS-7-x86_64-DVD-2009.iso
+
+# ISO for Baremetal Nodes
+sles_img: SLE-15-SP1-Installer-DVD-x86_64-GM-DVD1.iso
+
+# tftpboot RPM
+tftpboot_rpm: tftpboot-installation-SLE-15-SP1-x86_64-14.427.1-3.6.2.noarch.rpm

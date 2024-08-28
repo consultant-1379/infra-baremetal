@@ -1,0 +1,11 @@
+STARTMODE=auto
+BOOTPROTO=static
+IPADDR={{ nfs_ip }}/{{ nfs_cidr }}
+{% if nfs_nas_ip is defined and nfs_nas_ip != "" %}
+ETHERDEVICE=bond0
+{% else %}
+ETHERDEVICE=bond1
+{% endif %}
+VLAN_ID={{ nfs_vlan_id }}
+VLAN=yes
+MTU=9000

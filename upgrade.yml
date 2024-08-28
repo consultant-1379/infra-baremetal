@@ -1,0 +1,59 @@
+- hosts: nodes
+  gather_facts: no
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  pre_tasks:
+    - name: Remove ingress_lb group from inventory
+      tower_group:
+        inventory: '{{ deployment_name }}_CCD_deploy'
+        name: ingress_lb
+        state: absent
+        tower_config_file: /.tower_cli.cfg
+      delegate_to: localhost
+      run_once: yes
+  roles:
+    - role: common
+      delegate_to: localhost
+      run_once: yes
+      tags:
+        - common
+    - name: Preupgrade steps
+      role: ccd_preupgrade
+      become: yes
+      tags:
+        - preupgrade
+    - name: Create inventory for upgrade
+      role: ccd_create_inventory
+      vars:
+        pool_start: '{{ internal_pool_start }}'
+      delegate_to: localhost
+      run_once: yes
+      tags:
+        - upg_inv
+   
+- hosts: worker, master
+  order: reverse_sorted
+  serial: 1
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  tasks:
+    - name: Run SP2 upgrade
+      include_role:
+        name: ccd_preupgrade
+        tasks_from: sp2_upgrade.yml
+      tags:
+        - sp2
+- hosts: nodes
+  gather_facts: no
+  vars_files:
+    - "deployments/{{ deployment_name }}/{{ deployment_name }}.yml"
+    - "deployments/{{ deployment_name }}/passwords.yml"
+  roles:
+    - name: Upgrade CCD
+      role: ccd_upgrade
+      delegate_to: kickstart
+      run_once: yes
+      tags:
+        - upgrade

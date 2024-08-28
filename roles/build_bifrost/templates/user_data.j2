@@ -1,0 +1,13 @@
+#cloud-config
+users:
+  - name: eccd
+    passwd: $6$J0BjYtx0rEq3oTV.$dMcfny2gzCQoodo6wepd8A517cxfLQ16Jy5y3PuE.nxp1ZKnfcv9Q7UzYHDOKW5d7ixgLmraf0kdi9AM8UM5q1
+    gecos: CCD User
+    groups: [wheel, adm, systemd-journal]
+    lock_passwd: true
+    shell: /bin/bash
+    primary_group: eccd
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - {{ lookup("file", "/root/.ssh/id_ed25519.pub")}}
+

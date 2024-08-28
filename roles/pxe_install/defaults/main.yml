@@ -1,0 +1,10 @@
+---
+start_delay: 20 # Adds a pause in seconds when starting servers
+redfish_system_path:
+  hp: redfish/v1/Systems/1
+  dell: redfish/v1/Systems/System.Embedded.1
+set_pxe_body:
+  hp:    
+    hp_gen10: '{"Boot": { "BootSourceOverrideEnabled": "Once", "BootSourceOverrideTarget": "UefiTarget", "UefiTargetBootSourceOverride": "{{ pxe_boot_target}}"}}'
+    hp_gen9: '{"Boot": { "UefiTargetBootSourceOverride": "{{ pxe_boot_target }}"}}'
+dell_pxe_body: '{"Boot": {"BootSourceOverrideTarget": "Pxe"}}'

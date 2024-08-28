@@ -1,0 +1,6 @@
+---
+# Variables for Veritas Access NAS
+va_fs_cmd: "/opt/VRTSnas/scripts/storage/fs.sh"
+va_pool_cmd: "/opt/VRTSnas/scripts/storage/pool.sh"
+va_nfs_cmd: "/opt/VRTSnas/scripts/nfs/nfs_agent.sh" 
+va_nfs_share_options: rw,async,no_root_squash

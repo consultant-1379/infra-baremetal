@@ -1,0 +1,46 @@
+- name: CCD post install task for setting up the NFS and Block storage
+  block:
+    - name: Add hpe-storage helm chart repo
+      kubernetes.core.helm_repository:
+        name: hpe-storage
+        repo_url: https://hpe-storage.github.io/co-deployments/
+
+    - name: Ensure '{{ storage_namespace }}' namespace exists
+      kubernetes.core.k8s:
+        kind: Namespace
+        name: '{{ storage_namespace }}'
+        state: present
+
+    - name: Install hpe-3par-csi-driver
+      kubernetes.core.helm:
+        name: hpe-3par-csi-driver
+        chart_ref: hpe-storage/hpe-csi-driver
+        release_namespace: '{{ storage_namespace }}'
+        update_repo_cache: yes
+
+    - name: Generate 3PAR Storage Class files from templates
+      template:
+        src: '{{ tf_template }}'
+        dest: "/tmp/{{ tf_template | regex_replace('.j2','') }}"
+      loop:
+        - 3par_secret.yaml.j2
+        - 3par_storage_class.yaml.j2
+      loop_control:
+        loop_var: tf_template
+        label: "{{ tf_template | regex_replace('.j2','') }}"
+
+    - name: Configure hpe-3par Secret and Storage Class
+      kubernetes.core.k8s:
+        src: '/tmp/{{ item }}'
+        state: present
+      loop:
+        - 3par_secret.yaml
+        - 3par_storage_class.yaml
+    
+    - name: Clean up 3PAR Storage Class files 
+      file:
+        path: '/tmp/{{ item }}'
+        state: absent
+      loop:
+        - 3par_secret.yaml
+        - 3par_storage_class.yaml

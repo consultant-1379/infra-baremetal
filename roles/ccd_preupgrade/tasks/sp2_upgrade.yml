@@ -1,0 +1,117 @@
+- name: Upgrade to SLES15 SP2
+  when: ansible_distribution_version == "15.1"
+  block:
+    - name: "Drain node {{ inventory_hostname }}"
+      shell: "kubectl drain --ignore-daemonsets --delete-emptydir-data --force --pod-selector \"app notin(nfs-provisioner)\" --grace-period=60 --timeout=15m {{ inventory_hostname }}"
+      register: drain_result
+      delegate_to: "{{ groups['master'][0] }}"
+    - name: Result of drain
+      debug:
+        msg: "{{ drain_result.stdout_lines }}"
+    - name: List pods
+      shell: "kubectl get pods -o wide --all-namespaces"
+      delegate_to: "{{ groups['master'][0] }}"
+      register: pods_before_upgrade
+    - debug:
+        msg: '{{ pods_before_upgrade.stdout_lines }}'
+
+    - name: Wait for pods to drain before starting SP2 upgrade
+      include_tasks: wait_for_pods.yml
+
+    - name: SP2 Upgrade
+      block:
+        - name: Update the package management tools with the old SUSE Linux Enterprise repositories
+          shell: "zypper patch --updatestack-only -y"
+          register: update_stack
+          ignore_errors: yes
+
+        - debug:
+            msg: '{{ update_stack.stdout_lines }}'
+
+        - name: Re-Run package manager update (if required)
+          shell: "zypper patch --updatestack-only -y"
+          register: update_stack2
+          when: update_stack.rc == 103
+
+        - debug:
+            msg: '{{ update_stack2.stdout_lines }}'
+          when: update_stack2.changed
+
+        - name: Get list of orphaned packages
+          shell: "zypper packages --orphaned"
+          register: orphaned_pkgs
+        - debug:
+            msg: '{{ orphaned_pkgs.stdout_lines }}'
+
+        - name: Dry-Run of SP2 upgrade
+          shell: "zypper dup -D --no-allow-vendor-change --no-recommends -l -y"
+          register: dryrun_upgrade
+
+        - name: Output from dry-run
+          debug:
+            msg: '{{ dryrun_upgrade.stdout_lines }}'
+
+        - name: Run SP2 upgrade
+          shell: "zypper dup  --no-allow-vendor-change --no-recommends -l -y"
+          register: sp2_upgrade
+
+        - name: Output from SP2 upgrade
+          debug:
+            msg: '{{ sp2_upgrade.stdout_lines }}'
+
+        - name: Get list of orphaned packages
+          shell: zypper packages --orphaned
+          register: orphaned_pkgs2
+        - debug:
+            msg: '{{ orphaned_pkgs2.stdout_lines }}'
+
+        - name: Upgrade PowerFlex Storage Data Client (SDC)
+          zypper:
+            name: 'http://{{ repo_ip_address }}/{{ repo_folder }}/EMC-ScaleIO-sdc-3.5-1200.104.sles15.2.x86_64.rpm'
+            state: present
+            disable_gpg_check: yes
+          when: powerflex_host is defined and powerflex_host != "" and inventory_hostname in groups["worker"] 
+
+        - name: Reboot server after SP2 upgrade
+          reboot:
+            reboot_timeout: 900
+          async: 5
+          poll: 0
+      become: yes
+
+    # Wait for port 22 to become open and contain "OpenSSH"
+    - name: "Wait for {{ inventory_hostname }} to come up (max 1 hour)"
+      wait_for:
+        port: 22
+        host: "{{ ansible_host }}"
+        search_regex: OpenSSH
+        connect_timeout: 2
+        delay: 5
+        timeout: 3600
+    - name: "Uncordon node {{ inventory_hostname }}"
+      command: "kubectl uncordon {{ inventory_hostname }}"
+      delegate_to: "{{ groups['master'][0] }}"
+      changed_when: false
+      when: groups['master'][0] != inventory_hostname
+
+    - name: Uncordon node {{ nodeName }}
+      command: "kubectl uncordon {{ inventory_hostname }}"
+      delegate_to: "{{ groups['master'][2] }}"
+      changed_when: false
+      when: groups['master'][0] == inventory_hostname
+
+    - name: pause for 2 mins after master uncordon
+      pause:
+        minutes: 2
+      when: inventory_hostname in groups['master']
+
+    - name: List pods
+      shell: "kubectl get pods -o wide --all-namespaces"
+      delegate_to: "{{ groups['master'][0] }}"
+      register: pods_after_upgrade
+
+    - debug:
+        msg: '{{ pods_after_upgrade.stdout_lines }}'
+
+    - name: Wait for pods to drain before starting SP2 upgrade
+      include_tasks: wait_for_pods.yml

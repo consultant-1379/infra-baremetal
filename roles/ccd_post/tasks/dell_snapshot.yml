@@ -1,0 +1,33 @@
+- name: Download and unzip Kubernetes Snapshot Support
+  unarchive:
+    src: "http://{{ repo_ip_address }}/{{ repo_folder }}/k8s_snapshot-4.0.0.zip"
+    remote_src: yes
+    dest: /tmp
+
+- name: Install K8s Snapshot CRD
+  kubernetes.core.k8s:
+    src: '/tmp/external-snapshotter-release-4.0/client/config/crd/{{ item }}'
+    namespace: kube-system
+    wait: yes
+  loop:
+    - snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+    - snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+    - snapshot.storage.k8s.io_volumesnapshots.yaml
+
+- name: Update namespace for K8s Snapshot Controller to kube-system
+  replace:
+    path: '/tmp/external-snapshotter-release-4.0/deploy/kubernetes/snapshot-controller/{{ item }}'
+    regexp: 'default.*'
+    replace: 'kube-system'
+  loop:
+    - rbac-snapshot-controller.yaml
+    - setup-snapshot-controller.yaml
+
+- name: Install K8s Snapshot Controller
+  kubernetes.core.k8s:
+    src: '/tmp/external-snapshotter-release-4.0/deploy/kubernetes/snapshot-controller/{{ item }}'
+    namespace: kube-system
+    wait: yes
+  loop:
+    - rbac-snapshot-controller.yaml
+    - setup-snapshot-controller.yaml

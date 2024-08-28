@@ -1,0 +1,41 @@
+- name: Configure 3PAR volumes and export VLUNs to hosts
+  block:
+    - name: Check WSAPI is running on the 3PAR
+      include_tasks: check_wsapi.yml
+
+    - name: "Login to 3par as {{ hpe3par_user }}"
+      uri:
+        url: "{{ hpe_3par_wsapi_url }}/credentials"
+        method: POST
+        headers:
+          Content-Type: "application/json"
+        body_format: json
+        body: "{ 'user': '{{ hpe3par_user }}', 'password': '{{ hpe3par_password }}' }"
+        status_code: 201
+        return_content: yes
+        validate_certs: no
+      register: output
+
+    - name: Save WSAPI session key
+      set_fact:
+        wsapi_session: '{{ output.json.key }}'
+
+    - name: Configure 3PAR
+      include_tasks: 3par_vlun.yml
+      vars:
+        volume_name_format: '{%raw%}{{ deployment_prefix }}_{{ server_hostname }}_boot_VV{{ volume_id }}{%endraw%}'
+      loop: '{{ servers }}'
+      loop_control:
+        loop_var: server_hostname
+        index_var: lun_index
+        label: '{{ server_hostname }}'
+
+  always:
+    - name: Delete WSAPI session on 3PAR
+      uri:
+        url: "{{ hpe_3par_wsapi_url }}/credentials/{{ wsapi_session }}"
+        method: DELETE
+        headers:
+          Content-Type: "application/json"
+        validate_certs: no
+      when: wsapi_session is defined and wsapi_session != ""

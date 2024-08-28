@@ -1,0 +1,11 @@
+#jinja2: lstrip_blocks: "True", trim_blocks: "True"
+DEVICE={{ deployment_name }}_pxe
+TYPE=Bridge
+IPADDR={{ provisioning_phost_ip }}
+NETMASK={{ provisioning_netmask }}
+GATEWAY={{ provisioning_gateway }}
+DEFROUTE=no
+ONBOOT=yes
+BOOTPROTO=static
+NM_CONTROLLED=no
+DELAY=0

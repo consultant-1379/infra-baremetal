@@ -1,0 +1,35 @@
+# Add or remove node labels and taints
+
+- name: "Set labels and taints on OSD storage nodes to {{ state }}"
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Node
+    name: "{{ item }}"
+    resource_definition:
+      metadata:
+        labels:
+          node-role.rook-ceph/cluster: osd
+      spec:
+        taints:
+          - key: node-role.rook-ceph/cluster
+            value: osd
+            effect: NoSchedule
+    state: "{{ state }}"
+  loop: '{{ groups["storage_osd"] }}'
+
+- name: "Set labels and taints on non-OSD storage nodes to {{ state }}"
+  kubernetes.core.k8s:
+    api_version: v1
+    kind: Node
+    name: "{{ item }}"
+    resource_definition:
+      metadata:
+        labels:
+          node-role.rook-ceph/cluster: non-osd
+      spec:
+        taints:
+          - key: node-role.rook-ceph/cluster
+            value: non-osd
+            effect: NoSchedule
+    state: "{{ state }}"
+  loop: '{{ groups["storage_mon"] }}'
